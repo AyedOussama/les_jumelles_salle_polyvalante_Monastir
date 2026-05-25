@@ -127,16 +127,45 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  body {
+    @apply bg-background text-foreground;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  body > * {
+    max-width: 100%;
   }
 }
 
 @layer utilities {
+  .site-shell {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   html[data-nav-mode="drawer"] .site-shell {
     padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
+
+  @media (pointer: coarse) {
+    html,
+    body {
+      scrollbar-width: none;
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
   }
 }

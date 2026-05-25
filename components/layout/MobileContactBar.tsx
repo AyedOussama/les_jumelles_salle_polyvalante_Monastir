@@ -29,16 +29,16 @@ export default function MobileContactBar() {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200/70 bg-[#FAF8F5]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+    <div className="fixed inset-x-0 bottom-0 z-[70] w-full max-w-full overflow-x-clip border-t border-slate-200/70 bg-[#FAF8F5]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
       <div
-        className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-2xl border border-[#C5A880]/30 bg-white px-4 py-2.5 text-center shadow-sm"
+        className="mx-auto mb-2 flex w-full max-w-md min-w-0 flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#C5A880]/30 bg-white px-4 py-2.5 text-center shadow-sm"
       >
         <Phone size={15} className="text-[#C5A880]" />
         <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Téléphone</span>
         <span className="font-mono text-base font-extrabold tracking-wide text-slate-950">{SITE_CONFIG.phone.display}</span>
       </div>
 
-      <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
+      <div className="mx-auto grid w-full max-w-md min-w-0 grid-cols-2 gap-3">
         <a
           href={SITE_CONFIG.phone.href}
           aria-label={`Appeler ${SITE_CONFIG.phone.display}`}

@@ -62,13 +62,13 @@ export default function Navbar() {
         <nav
             className="fixed top-0 left-0 w-full z-50 transition-all duration-500 bg-[#FAF8F5]/90 backdrop-blur-xl border-b border-slate-200/30 py-4 shadow-[0_10px_35px_rgba(197,168,128,0.08)]"
         >
-            <div ref={containerRef} className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 flex justify-between items-center">
+            <div ref={containerRef} className="mx-auto flex w-full max-w-[1440px] min-w-0 items-center justify-between px-4 sm:px-6 lg:px-12">
 
                 {/* Logo and Brand Label */}
                 <button
                     ref={logoRef}
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    className="flex items-center gap-3 group cursor-pointer focus:outline-none text-left"
+                    className="group flex min-w-0 items-center gap-3 text-left cursor-pointer focus:outline-none"
                 >
                     <div className="relative shrink-0">
                         <Image
@@ -81,11 +81,11 @@ export default function Navbar() {
                         />
                     </div>
 
-                    <div>
-                        <span className="text-lg sm:text-xl font-serif font-bold tracking-[0.16em] sm:tracking-[0.18em] uppercase block leading-none transition-colors duration-500 text-slate-900">
+                    <div className="min-w-0">
+                        <span className="block truncate text-lg sm:text-xl font-serif font-bold tracking-[0.16em] sm:tracking-[0.18em] uppercase leading-none transition-colors duration-500 text-slate-900">
                             Les Jumelles
                         </span>
-                        <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[#C5A880] font-semibold block mt-1">
+                        <span className="block truncate text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-[#C5A880] font-semibold mt-1">
                             Salle Polyvalente Monastir
                         </span>
                     </div>
@@ -116,7 +116,7 @@ export default function Navbar() {
 
             {/* Mobile Navigation Drawer */}
             {mobileMenuOpen && navMode === "drawer" && (
-                <div className="absolute top-full left-0 w-full bg-[#FAF8F5] border-b border-slate-200/50 py-8 px-6 flex flex-col space-y-5 shadow-2xl animate-in slide-in-from-top duration-300">
+                <div className="absolute top-full left-0 flex w-full max-w-full flex-col space-y-5 overflow-x-clip bg-[#FAF8F5] border-b border-slate-200/50 py-8 px-6 shadow-2xl animate-in slide-in-from-top duration-300">
                     {NAV_LINKS.map((link) => (
                         <button
                             key={link.id}
