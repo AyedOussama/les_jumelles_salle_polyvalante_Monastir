@@ -1,0 +1,38 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+model Booking {
+  id            Int      @id @default(autoincrement())
+  dossierNum    String   @unique
+  date          Int      // Day number of the event
+  month         Int      // Month (0-indexed: 0 = Jan, 11 = Dec)
+  year          Int      // Year (e.g., 2026)
+  slot          String   // "matinee" | "soiree"
+  status        String   // "pending" | "confirmed"
+  name          String   // Client name
+  phone         String   // Client phone number
+  eventType     String   // "Mariage" | "Fiançailles" | etc.
+  specialNeeds  String?  @default("") // Optional special requirements
+  
+  // Extras options
+  decoration    Boolean  @default(false)
+  sonorisation  Boolean  @default(false)
+  climatisation Boolean  @default(false)
+  traiteur      Boolean  @default(false)
+  autres        Boolean  @default(false)
+
+  // Pricing & Admin fields
+  totalPrice      Float    @default(0)
+  advancePayment  Float    @default(0)
+  remainingAmount Float    @default(0)
+  adminNotes      String?  @default("")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

@@ -1,0 +1,143 @@
+{
+  "packs": [
+    {
+      "id": 1,
+      "title": "Pack Mariage",
+      "description": "Une soirée féérique. La salle complète avec un agencement majestueux et une direction artistique dédiée pour votre grand jour.",
+      "detailedDescription": "Offrez-vous un mariage d'empereur au sein de la prestigieuse salle Les Jumelles. Ce pack d'exception comprend la privatisation totale de notre salle sur deux étages, l'installation d'une scène d'honneur majestueuse avec trône impérial au choix, un système d'éclairage architectural et robotisé à LED de dernière génération, l'accès exclusif à notre suite mariés privée ultra-confortable pour vos préparatifs, ainsi qu'une coordination artistique et logistique assurée de bout en bout par nos régisseurs.",
+      "basePrice": 3000,
+      "features": [
+        "Éclairage architectural & robotisé",
+        "Suite mariés privée ultra-comfort",
+        "Capacité d'accueil maximale (800 pers.)",
+        "Sonorisation acoustique impériale"
+      ],
+      "images": [
+        {
+          "url": "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Pack mariage Les Jumelles",
+          "title": "Mariage 1"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Décoration mariage Les Jumelles",
+          "title": "Mariage 3"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "fete prive",
+      "description": "Un cadre intime et traditionnel, idéal pour célébrer vos fiançailles ou votre cérémonie d'Outia entourés de vos proches.",
+      "detailedDescription": "Célébrez votre union traditionnelle ou vos fiançailles dans un cadre élégant alliant tradition et modernité. Ce pack met à votre disposition notre salle entièrement décorée selon les thématiques de l'Outia tunisienne, comprenant les décors traditionnels brodés d'or, une sonorisation haute fidélité pour vos groupes de musique ou DJ, un accueil VIP pour vos proches et un service de rafraîchissement d'exception.",
+      "basePrice": 1000,
+      "features": [
+        "Aménagement traditionnel sur-mesure",
+        "Décoration florale et thématique",
+        "Accueil et logistique professionnelle",
+        "Espace cocktail & rafraîchissements"
+      ],
+      "images": [
+        {
+          "url": "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Pack fiançailles Les Jumelles",
+          "title": "Fiançailles 1"
+        },
+        {
+          "url": "https://res.cloudinary.com/dejyn871e/image/upload/v1779661344/les-jumelles/site/psrpezdo7veofzkqef0u.jpg",
+          "alt": "Cérémonie outia Les Jumelles",
+          "title": "Fiançailles 2",
+          "publicId": "les-jumelles/site/psrpezdo7veofzkqef0u"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Réception fiançailles Les Jumelles",
+          "title": "Fiançailles 3"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Séminaire & Pro",
+      "description": "Pour vos réunions d'affaires, lancements de produit, conférences et dîners de gala d'entreprise dans un cadre prestigieux.",
+      "detailedDescription": "Assurez le succès de vos conférences, séminaires professionnels et soirées de gala d'entreprise. Nous mettons à votre disposition notre salle polyvalente modulable en configuration théâtre ou banquet. Ce pack comprend un équipement audiovisuel de pointe (vidéoprojecteur laser 4K, micros haute fidélité sans fil, sonorisation acoustique intégrée), un espace pause-café raffiné et un service d'accueil professionnel pour vos collaborateurs et clients.",
+      "basePrice": 1500,
+      "features": [
+        "Disposition modulable (théâtre/banquet)",
+        "Vidéoprojecteur laser & micros sans fil",
+        "Espace pause-café et traiteur dédié",
+        "Climatisation renforcée silencieuse",
+        "Régie technique assurée"
+      ],
+      "images": [
+        {
+          "url": "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Pack professionnel Les Jumelles",
+          "title": "Professionnel 1"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1431540015161-0bf868a2d407?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Séminaire Les Jumelles",
+          "title": "Professionnel 2"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop",
+          "alt": "Événement professionnel Les Jumelles",
+          "title": "Professionnel 3"
+        }
+      ]
+    }
+  ],
+  "extras": {
+    "extra_1779660854674": {
+      "label": "2 eme etage ",
+      "price": 500
+    }
+  },
+  "siteImages": {
+    "hero": {
+      "url": "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop",
+      "alt": "Salle de réception Les Jumelles Monastir",
+      "title": "Photo principale",
+      "category": "Hero"
+    },
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=2069&auto=format&fit=crop",
+        "alt": "Table d'honneur et centres de table",
+        "category": "Décoration",
+        "title": "Table d'honneur & Centres de table"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070&auto=format&fit=crop",
+        "alt": "Grand hall avec lustres de cristal",
+        "category": "Architecture",
+        "title": "Le Grand Hall & Lustres de Cristal"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=2069&auto=format&fit=crop",
+        "alt": "Agencement de banquet",
+        "category": "Réception",
+        "title": "Agencement de Banquet Impérial"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?q=80&w=2070&auto=format&fit=crop",
+        "alt": "Scénographie lumineuse",
+        "category": "Éclairage",
+        "title": "Scénographie Lumineuse & Piste"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1976&auto=format&fit=crop",
+        "alt": "Espace mariés premium",
+        "category": "Détails",
+        "title": "Trône Premium & Espace Mariés"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1478146896981-b80fe463b330?q=80&w=2070&auto=format&fit=crop",
+        "alt": "Façade et accueil lumineux",
+        "category": "Extérieur",
+        "title": "Façade & Accueil Lumineux"
+      }
+    ]
+  }
+}

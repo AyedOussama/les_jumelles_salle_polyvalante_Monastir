@@ -1,0 +1,105 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { getSettingsAction } from "@/app/actions/settings";
+import { scrollToSection } from "@/lib/scrollUtils";
+
+const DEFAULT_HERO_IMAGE = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop";
+
+export default function Hero() {
+  const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
+  const [hasCustomHeroImage, setHasCustomHeroImage] = useState(false);
+
+  useEffect(() => {
+    async function loadHeroImage() {
+      try {
+        const settings = await getSettingsAction();
+        setHeroImage(settings.siteImages.hero.url);
+        setHasCustomHeroImage(Boolean(settings.siteImages.hero.publicId));
+      } catch (error) {
+        console.error("Failed to load hero image:", error);
+      }
+    }
+
+    loadHeroImage();
+  }, []);
+
+  return (
+    <section 
+      id="accueil" 
+      className="relative h-screen flex items-center justify-center overflow-hidden bg-[#FAF8F5]"
+    >
+      {/* Immersive Video Layer */}
+      <div className="absolute inset-0 z-0 bg-[#FAF8F5] overflow-hidden">
+        {/* Soft, light gradient overlays that preserve extreme video clarity and fade into the ivory background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#FAF8F5] z-10 pointer-events-none"></div>
+        
+        {hasCustomHeroImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroImage}
+            alt="Salle de réception Les Jumelles Monastir"
+            className="absolute inset-0 h-full w-full object-cover z-0 opacity-85 scale-100 select-none pointer-events-none transition-opacity duration-1000"
+          />
+        ) : (
+          <video
+            ref={(el) => {
+              if (el) {
+                el.muted = true;
+                el.play().catch(e => console.log("Autoplay blocked by browser policy", e));
+              }
+            }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover z-0 opacity-80 scale-100 select-none pointer-events-none transition-opacity duration-1000"
+            poster={heroImage}
+          >
+            <source src="https://cdn.coverr.co/videos/coverr-wedding-reception-5244/1080p.mp4" type="video/mp4" />
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-wedding-reception-hall-with-tables-and-chairs-44446-large.mp4" type="video/mp4" />
+          </video>
+        )}
+      </div>
+
+      {/* Hero Content Panel */}
+      <div className="relative z-20 text-center px-6 max-w-5xl mx-auto mt-16 animate-in fade-in duration-1000 slide-in-from-bottom-12">
+        <span className="inline-block text-white uppercase tracking-[0.35em] text-xs md:text-sm font-semibold mb-6 bg-slate-900/40 px-5 py-2 rounded-full border border-white/10 backdrop-blur-md shadow-sm">
+          L&apos;Écrin de vos événements à Monastir
+        </span>
+        
+        <h1 className="text-4xl md:text-8xl font-serif text-white mb-8 leading-[1.1] font-extrabold tracking-wide drop-shadow-[0_2px_15px_rgba(0,0,0,0.5)]">
+          Vivez des instants <br />
+          <span className="bg-gradient-to-r from-amber-300 via-amber-100 to-amber-400 bg-clip-text text-transparent">
+            inoubliables.
+          </span>
+        </h1>
+        
+        <p className="text-base md:text-xl text-[#FFF3DF] mb-10 max-w-2xl mx-auto font-semibold leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
+          Une salle élégante à Monastir pour vos mariages, fêtes et événements privés.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+          <button 
+            onClick={() => scrollToSection("step-1")} 
+            className="group relative inline-flex items-center justify-center w-full sm:w-auto px-9 py-4.5 font-extrabold text-white transition-all duration-300 bg-[#C5A880] hover:bg-[#b2936a] rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_40px_rgba(197,168,128,0.4)] active:scale-[0.98] cursor-pointer text-sm uppercase tracking-wider"
+          >
+            Vérifier les disponibilités
+            <ChevronRight className="ml-2 group-hover:translate-x-1.5 transition-transform duration-300" size={16} />
+          </button>
+          
+          <button 
+            onClick={() => scrollToSection("galerie")}
+            className="inline-flex items-center justify-center w-full sm:w-auto px-9 py-4.5 font-bold text-white transition-all duration-300 border border-white/30 rounded-full bg-black/25 backdrop-blur-md hover:bg-black/40 shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:border-white/60 cursor-pointer text-xs uppercase tracking-widest"
+          >
+            Découvrir la salle
+          </button>
+        </div>
+      </div>
+
+      {/* Decorative Gradient Overlay */}
+      <div className="absolute bottom-0 left-0 w-full h-28 bg-gradient-to-t from-[#FAF8F5] to-transparent pointer-events-none z-10"></div>
+    </section>
+  );
+}
