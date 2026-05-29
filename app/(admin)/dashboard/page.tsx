@@ -139,7 +139,9 @@ export default function AdminDashboardPage() {
     try {
       const res = await updateSettingsAction(settings);
       if (res.success) {
-        setSavedSettingsSignature(JSON.stringify(settings));
+        const persistedSettings = res.settings || settings;
+        setSettings(persistedSettings);
+        setSavedSettingsSignature(JSON.stringify(persistedSettings));
         alert("Paramètres de la salle sauvegardés avec succès !");
         return true;
       } else {

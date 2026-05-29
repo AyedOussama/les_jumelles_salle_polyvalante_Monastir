@@ -4,9 +4,14 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "./auth";
 
 const SETTINGS_FILE_PATH = path.join(process.cwd(), "lib", "data", "settings.json");
+const SETTINGS_DB_KEY = "site-settings";
+
+let settingsTableReady: Promise<void> | null = null;
 
 export interface SiteImage {
   url: string;
@@ -190,6 +195,66 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+function revalidateSettingsPaths() {
+  revalidatePath("/");
+  revalidatePath("/(admin)/dashboard");
+}
+
+function toPrismaJson(settings: SystemSettings): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(settings)) as Prisma.InputJsonValue;
+}
+
+function parseStoredSettings(value: unknown): SystemSettings {
+  if (typeof value === "string") {
+    return normalizeSettings(JSON.parse(value) as Partial<SystemSettings>);
+  }
+
+  if (value && typeof value === "object") {
+    return normalizeSettings(value as Partial<SystemSettings>);
+  }
+
+  return normalizeSettings(DEFAULT_SETTINGS);
+}
+
+async function readSeedSettings(): Promise<SystemSettings> {
+  try {
+    const data = await fs.readFile(SETTINGS_FILE_PATH, "utf-8");
+    return normalizeSettings(JSON.parse(data) as Partial<SystemSettings>);
+  } catch (error) {
+    console.error("[Settings seed read Error]:", error);
+    return normalizeSettings(DEFAULT_SETTINGS);
+  }
+}
+
+async function ensureSettingsTable() {
+  if (!settingsTableReady) {
+    settingsTableReady = prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "app_settings" (
+        "key" TEXT PRIMARY KEY,
+        "value" JSONB NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `.then(() => undefined).catch((error) => {
+      settingsTableReady = null;
+      throw error;
+    });
+  }
+
+  await settingsTableReady;
+}
+
+async function readSettingsFromDatabase(): Promise<SystemSettings | null> {
+  await ensureSettingsTable();
+
+  const record = await prisma.appSetting.findUnique({
+    where: { key: SETTINGS_DB_KEY },
+    select: { value: true },
+  });
+
+  return record ? parseStoredSettings(record.value) : null;
+}
+
 function validateImageFile(file: FormDataEntryValue | null): File {
   if (!(file instanceof File) || file.size === 0) {
     throw new Error("Aucune image valide n'a été sélectionnée.");
@@ -207,28 +272,39 @@ function validateImageFile(file: FormDataEntryValue | null): File {
 }
 
 async function persistSettings(settings: SystemSettings) {
-  await fs.mkdir(path.dirname(SETTINGS_FILE_PATH), { recursive: true });
-  await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), "utf-8");
-  revalidatePath("/");
-  revalidatePath("/(admin)/dashboard");
+  const normalizedSettings = normalizeSettings(settings);
+  const value = toPrismaJson(normalizedSettings);
+
+  await ensureSettingsTable();
+  await prisma.appSetting.upsert({
+    where: { key: SETTINGS_DB_KEY },
+    update: { value },
+    create: {
+      key: SETTINGS_DB_KEY,
+      value,
+    },
+  });
+
+  revalidateSettingsPaths();
+  return normalizedSettings;
 }
 
 /**
- * Lit les configurations administratives depuis le fichier JSON.
+ * Lit les configurations administratives depuis PostgreSQL.
  */
 export async function getSettingsAction(): Promise<SystemSettings> {
   try {
-    const data = await fs.readFile(SETTINGS_FILE_PATH, "utf-8");
-    return normalizeSettings(JSON.parse(data));
-  } catch {
-    // Si le fichier n'existe pas, on s'assure d'écrire et de retourner les valeurs par défaut
-    try {
-      await fs.mkdir(path.dirname(SETTINGS_FILE_PATH), { recursive: true });
-      await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(DEFAULT_SETTINGS, null, 2), "utf-8");
-    } catch (writeErr) {
-      console.error("Failed to write default settings file:", writeErr);
+    const storedSettings = await readSettingsFromDatabase();
+    if (storedSettings) {
+      return storedSettings;
     }
-    return normalizeSettings(DEFAULT_SETTINGS);
+
+    const seedSettings = await readSeedSettings();
+    await persistSettings(seedSettings);
+    return seedSettings;
+  } catch (error) {
+    console.error("[Prisma getSettingsAction Error]:", error);
+    return readSeedSettings();
   }
 }
 
@@ -237,20 +313,19 @@ export async function getSettingsAction(): Promise<SystemSettings> {
  */
 export async function updateSettingsAction(data: SystemSettings) {
   try {
+    const isAdmin = await checkAdminSession();
+    if (!isAdmin) {
+      throw new Error("Session administrateur expirée.");
+    }
+
     // Validation minimale
     if (!data.packs || !data.extras || !data.siteImages) {
       throw new Error("Format de paramètres invalide.");
     }
 
-    const normalizedData = normalizeSettings(data);
-    await fs.mkdir(path.dirname(SETTINGS_FILE_PATH), { recursive: true });
-    await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(normalizedData, null, 2), "utf-8");
-    
-    // Revalidation des pages statiques/dynamiques de l'application
-    revalidatePath("/");
-    revalidatePath("/(admin)/dashboard");
-    
-    return { success: true };
+    const settings = await persistSettings(data);
+
+    return { success: true, settings };
   } catch (error: unknown) {
     console.error("[Prisma updateSettingsAction Error]:", error);
     return { success: false, error: getErrorMessage(error, "Impossible de sauvegarder les paramètres.") };
@@ -427,13 +502,13 @@ export async function uploadSiteImageAction(slot: string, formData: FormData) {
     };
     const updatedSettings = applySiteImage(currentSettings, slot, nextImage);
 
-    await persistSettings(updatedSettings);
+    const persistedSettings = await persistSettings(updatedSettings);
 
     if (previousImage?.publicId && previousImage.publicId !== uploadedImage.publicId) {
       await deleteCloudinaryImage(previousImage.publicId);
     }
 
-    return { success: true, settings: updatedSettings };
+    return { success: true, settings: persistedSettings };
   } catch (error: unknown) {
     console.error("[uploadSiteImageAction Error]:", error);
     return { success: false, error: getErrorMessage(error, "Impossible d'uploader cette image.") };
@@ -474,9 +549,9 @@ export async function uploadPackImageAction(packId: number, formData: FormData) 
       ),
     };
 
-    await persistSettings(updatedSettings);
+    const persistedSettings = await persistSettings(updatedSettings);
 
-    return { success: true, settings: updatedSettings };
+    return { success: true, settings: persistedSettings };
   } catch (error: unknown) {
     console.error("[uploadPackImageAction Error]:", error);
     return { success: false, error: getErrorMessage(error, "Impossible d'ajouter cette photo.") };
@@ -516,13 +591,13 @@ export async function deleteSiteImageAction(slot: string) {
       }),
     };
 
-    await persistSettings(updatedSettings);
+    const persistedSettings = await persistSettings(updatedSettings);
 
     if (previousImage.publicId) {
       await deleteCloudinaryImage(previousImage.publicId);
     }
 
-    return { success: true, settings: updatedSettings };
+    return { success: true, settings: persistedSettings };
   } catch (error: unknown) {
     console.error("[deleteSiteImageAction Error]:", error);
     return { success: false, error: getErrorMessage(error, "Impossible de supprimer cette photo.") };

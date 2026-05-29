@@ -45,7 +45,10 @@ export default function About() {
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacité</span>
-                  <span className="text-sm font-semibold text-slate-800">Max 800 personnes</span>
+                  <span className="text-sm font-semibold text-slate-800">Jusqu'à 500 personnes</span>
+                  <span className="text-xs text-slate-500 font-normal">300 personnes 2éme etage (en option)</span>
+
+
                 </div>
               </div>
 
