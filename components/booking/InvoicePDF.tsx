@@ -284,28 +284,21 @@ export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
   const defaultExtrasNames: Record<string, string> = {
     decoration: "Décoration Florale & Trône Premium",
     sonorisation: "Sonorisation Haute Fidélité & DJ",
+    climatisation: "Système de Climatisation Renforcé",
     traiteur: "Menu de Fêtes & Service Traiteur",
     autres: "Autres aménagements spécifiques"
   };
 
-  let extrasList: { label: string, selected: boolean }[] = [];
-
-  if (settings && settings.extras) {
-    extrasList = Object.keys(settings.extras).map((key) => {
-      const extraObj = settings.extras[key];
-      return {
-        label: extraObj.label,
-        selected: !!booking.extras?.[key]
-      };
-    });
-  } else {
-    extrasList = Object.keys(defaultExtrasNames).map((key) => {
-      return {
-        label: defaultExtrasNames[key],
-        selected: !!booking.extras?.[key]
-      };
-    });
-  }
+  const extraLabels = settings?.extras
+    ? Object.fromEntries(Object.entries(settings.extras).map(([key, extra]) => [key, extra.label]))
+    : defaultExtrasNames;
+  const selectedExtraKeys = Object.entries(booking.extras || {})
+    .filter(([, selected]) => selected)
+    .map(([key]) => key);
+  const extrasList = Array.from(new Set([...Object.keys(extraLabels), ...selectedExtraKeys])).map((key) => ({
+    label: extraLabels[key] || key,
+    selected: !!booking.extras?.[key]
+  }));
 
   return (
     <Document>

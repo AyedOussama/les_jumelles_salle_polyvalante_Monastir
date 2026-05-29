@@ -1,7 +1,17 @@
 "use server";
 
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { sendBookingNotificationEmail } from "@/lib/email/booking-notification";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getSettingsAction } from "./settings";
+
+const LEGACY_EXTRA_KEYS = ["decoration", "sonorisation", "climatisation", "traiteur", "autres"] as const;
+
+type BookingExtraKey = (typeof LEGACY_EXTRA_KEYS)[number];
+export type BookingExtras = Record<string, boolean>;
+
+let bookingExtrasColumnReady: Promise<void> | null = null;
 
 // Type definitions to mirror local structures and guarantee strict typing
 export interface BookingData {
@@ -14,22 +24,102 @@ export interface BookingData {
   eventType: string;
   specialNeeds?: string;
   totalPrice?: number;
-  extras: {
-    decoration: boolean;
-    sonorisation: boolean;
-    climatisation: boolean;
-    traiteur: boolean;
-    autres: boolean;
-  };
+  extras: BookingExtras;
 }
 
 type BookingStatus = "pending" | "confirmed" | "rejected" | "cancelled";
+
+function normalizeExtras(extras?: BookingExtras | null): BookingExtras {
+  const normalized: BookingExtras = {};
+
+  Object.entries(extras || {}).forEach(([key, value]) => {
+    normalized[key] = Boolean(value);
+  });
+
+  LEGACY_EXTRA_KEYS.forEach((key) => {
+    normalized[key] = Boolean(normalized[key]);
+  });
+
+  return normalized;
+}
+
+function parseStoredExtras(value: unknown): BookingExtras {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === "string") {
+    try {
+      return normalizeExtras(JSON.parse(value) as BookingExtras);
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof value === "object") {
+    return normalizeExtras(value as BookingExtras);
+  }
+
+  return {};
+}
+
+function buildLegacyExtras(extras: BookingExtras): Record<BookingExtraKey, boolean> {
+  return {
+    decoration: Boolean(extras.decoration),
+    sonorisation: Boolean(extras.sonorisation),
+    climatisation: Boolean(extras.climatisation),
+    traiteur: Boolean(extras.traiteur),
+    autres: Boolean(extras.autres),
+  };
+}
+
+function buildBookingExtras(booking: {
+  decoration: boolean;
+  sonorisation: boolean;
+  climatisation: boolean;
+  traiteur: boolean;
+  autres: boolean;
+  extrasData?: unknown;
+}): BookingExtras {
+  return normalizeExtras({
+    decoration: booking.decoration,
+    sonorisation: booking.sonorisation,
+    climatisation: booking.climatisation,
+    traiteur: booking.traiteur,
+    autres: booking.autres,
+    ...parseStoredExtras(booking.extrasData),
+  });
+}
+
+function toPrismaJson(value: BookingExtras): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+async function ensureBookingExtrasColumn() {
+  if (!bookingExtrasColumnReady) {
+    bookingExtrasColumnReady = prisma.$executeRaw`
+      ALTER TABLE "Booking"
+      ADD COLUMN IF NOT EXISTS "extrasData" JSONB NOT NULL DEFAULT '{}'::jsonb
+    `.then(() => undefined).catch((error) => {
+      bookingExtrasColumnReady = null;
+      throw error;
+    });
+  }
+
+  await bookingExtrasColumnReady;
+}
 
 /**
  * Fetch all bookings from the Neon PostgreSQL database.
  */
 export async function getBookingsAction() {
   try {
+    await ensureBookingExtrasColumn();
+
     const dbBookings = await prisma.booking.findMany({
       orderBy: { createdAt: "desc" },
     });
@@ -46,13 +136,7 @@ export async function getBookingsAction() {
       phone: b.phone,
       eventType: b.eventType,
       specialNeeds: b.specialNeeds || "",
-      extras: {
-        decoration: b.decoration,
-        sonorisation: b.sonorisation,
-        climatisation: b.climatisation,
-        traiteur: b.traiteur,
-        autres: b.autres,
-      },
+      extras: buildBookingExtras(b),
       totalPrice: b.totalPrice || 0,
       advancePayment: b.advancePayment || 0,
       remainingAmount: b.remainingAmount || 0,
@@ -69,6 +153,8 @@ export async function getBookingsAction() {
  */
 export async function createBookingAction(data: BookingData) {
   try {
+    await ensureBookingExtrasColumn();
+
     // Validation des données d'entrée
     if (!data.name?.trim() || !data.phone?.trim() || !data.eventType?.trim()) {
       throw new Error("Nom, téléphone et type d'événement sont obligatoires.");
@@ -85,6 +171,8 @@ export async function createBookingAction(data: BookingData) {
     const safePhone = data.phone.trim().slice(0, 20);
     const safeEventType = data.eventType.trim().slice(0, 50);
     const safeSpecialNeeds = (data.specialNeeds || "").trim().slice(0, 500);
+    const safeExtras = normalizeExtras(data.extras);
+    const legacyExtras = buildLegacyExtras(safeExtras);
 
     let dossierNum = "";
     let isUnique = false;
@@ -118,11 +206,12 @@ export async function createBookingAction(data: BookingData) {
         phone: safePhone,
         eventType: safeEventType,
         specialNeeds: safeSpecialNeeds,
-        decoration: data.extras.decoration,
-        sonorisation: data.extras.sonorisation,
-        climatisation: data.extras.climatisation,
-        traiteur: data.extras.traiteur,
-        autres: data.extras.autres,
+        decoration: legacyExtras.decoration,
+        sonorisation: legacyExtras.sonorisation,
+        climatisation: legacyExtras.climatisation,
+        traiteur: legacyExtras.traiteur,
+        autres: legacyExtras.autres,
+        extrasData: toPrismaJson(safeExtras),
         totalPrice: data.totalPrice || 0,
       },
     });
@@ -130,33 +219,36 @@ export async function createBookingAction(data: BookingData) {
     revalidatePath("/(admin)/dashboard");
     revalidatePath("/");
 
+    const responseBooking = {
+      id: newBooking.id,
+      dossierNum: newBooking.dossierNum,
+      date: newBooking.date,
+      month: newBooking.month,
+      year: newBooking.year,
+      slot: newBooking.slot as "matinee" | "soiree",
+      status: newBooking.status as BookingStatus,
+      name: newBooking.name,
+      phone: newBooking.phone,
+      eventType: newBooking.eventType,
+      specialNeeds: newBooking.specialNeeds || "",
+      extras: buildBookingExtras(newBooking),
+      totalPrice: newBooking.totalPrice || 0,
+      advancePayment: 0,
+      remainingAmount: 0,
+      adminNotes: "",
+    };
+
+    try {
+      const settings = await getSettingsAction();
+      await sendBookingNotificationEmail(responseBooking, settings);
+    } catch (emailError) {
+      console.error("[Booking notification email Error]:", emailError);
+    }
+
     return {
       success: true,
       dossierNum: newBooking.dossierNum,
-      booking: {
-        id: newBooking.id,
-        dossierNum: newBooking.dossierNum,
-        date: newBooking.date,
-        month: newBooking.month,
-        year: newBooking.year,
-        slot: newBooking.slot as "matinee" | "soiree",
-        status: newBooking.status as BookingStatus,
-        name: newBooking.name,
-        phone: newBooking.phone,
-        eventType: newBooking.eventType,
-        specialNeeds: newBooking.specialNeeds || "",
-        extras: {
-          decoration: newBooking.decoration,
-          sonorisation: newBooking.sonorisation,
-          climatisation: newBooking.climatisation,
-          traiteur: newBooking.traiteur,
-          autres: newBooking.autres,
-        },
-        totalPrice: newBooking.totalPrice || 0,
-        advancePayment: 0,
-        remainingAmount: 0,
-        adminNotes: "",
-      },
+      booking: responseBooking,
     };
   } catch (error) {
     console.error("[Prisma createBookingAction Error]:", error);
@@ -169,6 +261,20 @@ export async function createBookingAction(data: BookingData) {
  */
 export async function approveBookingAction(id: number) {
   try {
+    await ensureBookingExtrasColumn();
+
+    const existing = await prisma.booking.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new Error("Réservation introuvable.");
+    }
+
+    if ((existing.advancePayment || 0) <= 0) {
+      throw new Error("Le montant d'avance est obligatoire avant de confirmer la réservation.");
+    }
+
     const updated = await prisma.booking.update({
       where: { id },
       data: { status: "confirmed" },
@@ -179,7 +285,7 @@ export async function approveBookingAction(id: number) {
     return { success: true, id: updated.id };
   } catch (error) {
     console.error("[Prisma approveBookingAction Error]:", error);
-    throw new Error("Échec de la validation de la réservation.");
+    throw new Error(getErrorMessage(error, "Échec de la validation de la réservation."));
   }
 }
 
@@ -188,6 +294,8 @@ export async function approveBookingAction(id: number) {
  */
 export async function rejectBookingAction(id: number) {
   try {
+    await ensureBookingExtrasColumn();
+
     const existing = await prisma.booking.findUnique({
       where: { id },
     });
@@ -211,20 +319,26 @@ export async function rejectBookingAction(id: number) {
 }
 
 /**
- * Archive an approved booking as cancelled to preserve traceability.
+ * Move a confirmed booking back to pending while preserving traceability.
  */
 export async function cancelBookingAction(id: number) {
   try {
+    await ensureBookingExtrasColumn();
+
     const existing = await prisma.booking.findUnique({
       where: { id },
     });
+
+    if (!existing) {
+      throw new Error("Réservation introuvable.");
+    }
 
     const timestamp = new Date().toISOString();
     const updated = await prisma.booking.update({
       where: { id },
       data: {
-        status: "cancelled",
-        adminNotes: `${existing?.adminNotes || ""}\n[${timestamp}] Réservation confirmée annulée par l'administration.`.trim(),
+        status: "pending",
+        adminNotes: `${existing.adminNotes || ""}\n[${timestamp}] Réservation confirmée remise en attente par l'administration.`.trim(),
       },
     });
 
@@ -233,7 +347,7 @@ export async function cancelBookingAction(id: number) {
     return { success: true, id: updated.id };
   } catch (error) {
     console.error("[Prisma cancelBookingAction Error]:", error);
-    throw new Error("Échec de l'annulation de la réservation.");
+    throw new Error(getErrorMessage(error, "Échec de la remise en attente de la réservation."));
   }
 }
 
@@ -249,13 +363,7 @@ export async function updateBookingAction(id: number, data: {
   phone?: string;
   eventType?: string;
   specialNeeds?: string;
-  extras?: {
-    decoration: boolean;
-    sonorisation: boolean;
-    climatisation: boolean;
-    traiteur: boolean;
-    autres: boolean;
-  };
+  extras?: BookingExtras;
   totalPrice?: number;
   advancePayment?: number;
   remainingAmount?: number;
@@ -263,6 +371,8 @@ export async function updateBookingAction(id: number, data: {
   status?: BookingStatus;
 }) {
   try {
+    await ensureBookingExtrasColumn();
+
     const existing = await prisma.booking.findUnique({
       where: { id },
     });
@@ -271,7 +381,7 @@ export async function updateBookingAction(id: number, data: {
       throw new Error("Réservation introuvable.");
     }
 
-    const updateData: Record<string, string | number | boolean> = {};
+    const updateData: Record<string, string | number | boolean | Prisma.InputJsonValue> = {};
     if (data.date !== undefined) {
       if (data.date < 1 || data.date > 31) throw new Error("Date invalide.");
       updateData.date = data.date;
@@ -298,6 +408,7 @@ export async function updateBookingAction(id: number, data: {
     if (data.adminNotes !== undefined) updateData.adminNotes = data.adminNotes.trim();
     if (data.status !== undefined) updateData.status = data.status;
 
+    const nextAdvancePayment = data.advancePayment ?? existing.advancePayment;
     const nextDate = data.date ?? existing.date;
     const nextMonth = data.month ?? existing.month;
     const nextYear = data.year ?? existing.year;
@@ -310,6 +421,10 @@ export async function updateBookingAction(id: number, data: {
       nextSlot !== existing.slot;
 
     if (nextStatus === "confirmed") {
+      if ((nextAdvancePayment || 0) <= 0) {
+        throw new Error("Le montant d'avance est obligatoire avant de confirmer la réservation.");
+      }
+
       const conflictingBooking = await prisma.booking.findFirst({
         where: {
           id: { not: id },
@@ -327,11 +442,14 @@ export async function updateBookingAction(id: number, data: {
     }
 
     if (data.extras !== undefined) {
-      updateData.decoration = data.extras.decoration;
-      updateData.sonorisation = data.extras.sonorisation;
-      updateData.climatisation = data.extras.climatisation;
-      updateData.traiteur = data.extras.traiteur;
-      updateData.autres = data.extras.autres;
+      const safeExtras = normalizeExtras(data.extras);
+      const legacyExtras = buildLegacyExtras(safeExtras);
+      updateData.decoration = legacyExtras.decoration;
+      updateData.sonorisation = legacyExtras.sonorisation;
+      updateData.climatisation = legacyExtras.climatisation;
+      updateData.traiteur = legacyExtras.traiteur;
+      updateData.autres = legacyExtras.autres;
+      updateData.extrasData = toPrismaJson(safeExtras);
     }
 
     if (hasDateChanged) {
@@ -364,13 +482,7 @@ export async function updateBookingAction(id: number, data: {
         phone: updated.phone,
         eventType: updated.eventType,
         specialNeeds: updated.specialNeeds || "",
-        extras: {
-          decoration: updated.decoration,
-          sonorisation: updated.sonorisation,
-          climatisation: updated.climatisation,
-          traiteur: updated.traiteur,
-          autres: updated.autres,
-        },
+        extras: buildBookingExtras(updated),
         totalPrice: updated.totalPrice,
         advancePayment: updated.advancePayment,
         remainingAmount: updated.remainingAmount,
@@ -379,6 +491,6 @@ export async function updateBookingAction(id: number, data: {
     };
   } catch (error) {
     console.error("[Prisma updateBookingAction Error]:", error);
-    throw new Error("Échec de la mise à jour de la réservation.");
+    throw new Error(getErrorMessage(error, "Échec de la mise à jour de la réservation."));
   }
 }

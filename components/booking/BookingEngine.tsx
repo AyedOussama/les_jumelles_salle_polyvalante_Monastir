@@ -16,7 +16,7 @@ const MONTH_NAMES_FR = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
 ];
 
-export default function BookingEngine() {
+export default function BookingEngine(): React.ReactElement {
   const { bookings, addBooking } = useBookings();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
 

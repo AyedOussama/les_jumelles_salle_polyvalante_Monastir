@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
       setEditTargetStatus(undefined);
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de l'enregistrement des modifications.");
+      alert(err instanceof Error ? err.message : "Erreur lors de l'enregistrement des modifications.");
     }
   };
 
@@ -402,6 +402,7 @@ export default function AdminDashboardPage() {
           }}
           onSave={handleSaveEdit}
           getExtraLabel={getExtraLabel}
+          availableExtras={settings?.extras}
         />
       )}
 

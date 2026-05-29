@@ -26,6 +26,7 @@ model Booking {
   climatisation Boolean  @default(false)
   traiteur      Boolean  @default(false)
   autres        Boolean  @default(false)
+  extrasData    Json     @default("{}")
 
   // Pricing & Admin fields
   totalPrice      Float    @default(0)

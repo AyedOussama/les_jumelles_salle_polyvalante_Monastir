@@ -540,11 +540,11 @@ function DestructiveActionDialog({
   const bookingMonth = booking.month !== undefined ? MONTH_NAMES_FR[booking.month] : "Mai";
   const bookingYear = booking.year !== undefined ? booking.year : 2026;
   const isReject = type === "reject";
-  const title = isReject ? "Refuser cette demande ?" : "Annuler cette réservation ?";
-  const confirmLabel = isReject ? "Oui, refuser la demande" : "Oui, annuler la réservation";
+  const title = isReject ? "Refuser cette demande ?" : "Remettre cette réservation en attente ?";
+  const confirmLabel = isReject ? "Oui, refuser la demande" : "Oui, remettre en attente";
   const consequence = isReject
     ? "La demande ne sera plus affichée dans les nouvelles demandes. Le dossier sera conservé en archive interne pour la traçabilité."
-    : "La réservation ne sera plus affichée comme confirmée. Le créneau redeviendra disponible et le dossier sera conservé en archive interne.";
+    : "La réservation quittera les confirmations et reviendra dans les nouvelles demandes, avec son dossier conservé.";
 
   const handleConfirm = async () => {
     setIsProcessing(true);

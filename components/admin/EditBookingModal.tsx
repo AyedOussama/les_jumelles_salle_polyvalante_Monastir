@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Calendar, ShieldCheck, X } from "lucide-react";
 import type { Booking } from "@/lib/context/BookingContext";
+import type { SettingExtra } from "@/app/actions/settings";
 
 const MONTH_NAMES_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -15,6 +16,7 @@ interface EditBookingModalProps {
   onClose: () => void;
   onSave: (id: number, data: Partial<Omit<Booking, "id" | "dossierNum">>) => Promise<void>;
   getExtraLabel: (key: string) => string;
+  availableExtras?: Record<string, SettingExtra>;
 }
 
 export function EditBookingModal({
@@ -23,22 +25,18 @@ export function EditBookingModal({
   onClose,
   onSave,
   getExtraLabel,
+  availableExtras,
 }: EditBookingModalProps) {
   const [name, setName] = useState(booking.name);
   const [phone, setPhone] = useState(booking.phone);
   const [eventType, setEventType] = useState(booking.eventType);
   const [specialNeeds, setSpecialNeeds] = useState(booking.specialNeeds || "");
-  const [extras, setExtras] = useState<Booking["extras"]>({
-    decoration: booking.extras?.decoration || false,
-    sonorisation: booking.extras?.sonorisation || false,
-    climatisation: booking.extras?.climatisation || false,
-    traiteur: booking.extras?.traiteur || false,
-    autres: booking.extras?.autres || false,
-  });
+  const [extras, setExtras] = useState<Booking["extras"]>(() => buildEditableExtras(booking.extras, availableExtras));
   const [totalPrice, setTotalPrice] = useState(booking.totalPrice || 0);
   const [advancePayment, setAdvancePayment] = useState(booking.advancePayment || 0);
   const [adminNotes, setAdminNotes] = useState(booking.adminNotes || "");
   const [status, setStatus] = useState<Booking["status"]>(targetStatus || booking.status || "pending");
+  const [paymentError, setPaymentError] = useState("");
   const [eventDate, setEventDate] = useState(booking.date);
   const [eventMonth, setEventMonth] = useState(booking.month !== undefined ? booking.month : 4);
   const [eventYear, setEventYear] = useState(booking.year !== undefined ? booking.year : 2026);
@@ -47,6 +45,12 @@ export function EditBookingModal({
   const yearOptions = Array.from({ length: 6 }, (_, index) => new Date().getFullYear() + index);
 
   const handleSave = async () => {
+    if (status === "confirmed" && advancePayment <= 0) {
+      setPaymentError("Le montant d'avance est obligatoire avant de confirmer la réservation.");
+      return;
+    }
+
+    setPaymentError("");
     const remainingAmount = Math.max(0, totalPrice - advancePayment);
     await onSave(booking.id, {
       date: eventDate,
@@ -211,15 +215,15 @@ export function EditBookingModal({
               </div>
             </div>
 
-            <div className="space-y-4">
+              <div className="space-y-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-100">Options & Prestations choisies</h4>
 
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 {Object.entries(extras).map(([key, val]) => (
                   <label key={key} className="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-slate-200/60 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
                     <input
                       type="checkbox"
-                      checked={val}
+                      checked={Boolean(val)}
                       onChange={(e) => setExtras({
                         ...extras,
                         [key]: e.target.checked,
@@ -254,7 +258,17 @@ export function EditBookingModal({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <PaymentInput label="PRIX TOTAL CONVENU (TND)" value={totalPrice} onChange={setTotalPrice} />
-              <PaymentInput label="MONTANT DÉJÀ PAYÉ (TND)" value={advancePayment} onChange={setAdvancePayment} paid />
+              <PaymentInput
+                label="MONTANT D'AVANCE PAYÉ (TND)"
+                value={advancePayment}
+                onChange={(value) => {
+                  setAdvancePayment(value);
+                  if (value > 0) setPaymentError("");
+                }}
+                paid
+                required={status === "confirmed"}
+                error={paymentError}
+              />
 
               <div className="flex flex-col justify-end">
                 <div className="bg-[#1A242B] rounded-xl p-3 border border-slate-800 text-white flex justify-between items-center h-[46px]">
@@ -288,7 +302,13 @@ export function EditBookingModal({
             </div>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as Booking["status"])}
+              onChange={(e) => {
+                const nextStatus = e.target.value as Booking["status"];
+                setStatus(nextStatus);
+                if (nextStatus !== "confirmed" || advancePayment > 0) {
+                  setPaymentError("");
+                }
+              }}
               className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#C5A880]/20 focus:border-[#C5A880] transition-all"
             >
               <option value="pending">En attente de confirmation</option>
@@ -316,32 +336,64 @@ export function EditBookingModal({
   );
 }
 
+function buildEditableExtras(
+  bookingExtras: Booking["extras"] | undefined,
+  availableExtras: Record<string, SettingExtra> | undefined,
+) {
+  const legacyKeys = ["decoration", "sonorisation", "climatisation", "traiteur", "autres"];
+  const configuredKeys = Object.keys(availableExtras || {});
+  const baseKeys = configuredKeys.length > 0 ? configuredKeys : legacyKeys;
+  const selectedLegacyKeys = Object.entries(bookingExtras || {})
+    .filter(([, value]) => value)
+    .map(([key]) => key);
+  const keys = Array.from(new Set([...baseKeys, ...selectedLegacyKeys]));
+
+  return keys.reduce<Booking["extras"]>((acc, key) => {
+    acc[key] = Boolean(bookingExtras?.[key]);
+    return acc;
+  }, {});
+}
+
 function PaymentInput({
   label,
   value,
   onChange,
   paid = false,
+  required = false,
+  error,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   paid?: boolean;
+  required?: boolean;
+  error?: string;
 }) {
   return (
     <div>
-      <label className="block text-xs font-bold text-slate-700 mb-1.5">{label}</label>
+      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+        {label}{required && <span className="text-rose-500"> *</span>}
+      </label>
       <div className="relative">
         <input
           type="number"
+          min={0}
+          required={required}
+          aria-invalid={Boolean(error)}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className={`w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold font-mono focus:outline-none focus:ring-2 focus:ring-[#C5A880]/20 focus:border-[#C5A880] transition-all ${
+          className={`w-full pl-4 pr-12 py-3 bg-white border rounded-xl text-sm font-bold font-mono focus:outline-none focus:ring-2 transition-all ${
+            error ? "border-rose-300 focus:ring-rose-100 focus:border-rose-400" : "border-slate-200 focus:ring-[#C5A880]/20 focus:border-[#C5A880]"
+          } ${
             paid ? "text-emerald-700" : ""
           }`}
           placeholder="0"
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">TND</span>
       </div>
+      {error && (
+        <p className="mt-1.5 text-[11px] font-semibold text-rose-600">{error}</p>
+      )}
     </div>
   );
 }

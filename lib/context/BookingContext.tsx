@@ -8,7 +8,8 @@ import {
   rejectBookingAction, 
   cancelBookingAction,
   updateBookingAction,
-  BookingData
+  type BookingData,
+  type BookingExtras
 } from "@/app/actions/booking";
 
 export interface Booking {
@@ -23,13 +24,7 @@ export interface Booking {
   phone: string;
   eventType: string;
   specialNeeds?: string;
-  extras: {
-    decoration: boolean;
-    sonorisation: boolean;
-    climatisation: boolean;
-    traiteur: boolean;
-    autres: boolean;
-  };
+  extras: BookingExtras;
   totalPrice?: number;
   advancePayment?: number;
   remainingAmount?: number;
@@ -144,7 +139,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       const result = await cancelBookingAction(id);
       if (result.success) {
         setBookings((prev) =>
-          prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
+          prev.map((b) => (b.id === id ? { ...b, status: "pending" } : b))
         );
       }
     } catch (error) {
