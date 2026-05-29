@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Clock, Phone, Navigation } from "lucide-react";
+import { Clock, Layers3, MapPin, Navigation, Phone, UsersRound } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/constants";
 
 export default function About() {
@@ -34,36 +34,34 @@ export default function About() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Capacity Card */}
-              <div className="flex items-center gap-3.5 bg-white border border-slate-200/50 p-4 rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.01)] group hover:border-[#C5A880]/30 transition-all duration-300">
-                <div className="w-10 h-10 rounded-xl bg-[#C5A880]/10 flex items-center justify-center text-[#C5A880] shrink-0">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
+              <div className="flex items-start gap-4 bg-white border border-[#C5A880]/25 p-5 rounded-lg shadow-[0_10px_30px_rgba(15,23,42,0.04)] group hover:border-[#C5A880]/60 hover:-translate-y-0.5 transition-all duration-300">
+                <div className="w-11 h-11 rounded-lg bg-[#C5A880]/10 flex items-center justify-center text-[#C5A880] shrink-0 ring-1 ring-[#C5A880]/15">
+                  <UsersRound size={21} strokeWidth={1.8} />
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacité</span>
-                  <span className="text-sm font-semibold text-slate-800">Jusqu'à 500 personnes</span>
-                  <span className="text-xs text-slate-500 font-normal">300 personnes 2éme etage (en option)</span>
-
-
+                <div className="min-w-0 space-y-2">
+                  <span className="text-[10px] text-[#9D7E4E] font-bold uppercase tracking-[0.18em] block">Capacité</span>
+                  <div className="leading-tight">
+                    <span className="block text-[15px] font-bold text-slate-900">Jusqu&apos;à 500 personnes</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">300 personnes au 2ème étage, en option</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Grande salle</span>
+                    <span className="rounded-md bg-[#C5A880]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9D7E4E]">2ème étage</span>
+                  </div>
                 </div>
               </div>
 
               {/* Floors Card */}
-              <div className="flex items-center gap-3.5 bg-white border border-slate-200/50 p-4 rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.01)] group hover:border-[#C5A880]/30 transition-all duration-300">
-                <div className="w-10 h-10 rounded-xl bg-[#C5A880]/10 flex items-center justify-center text-[#C5A880] shrink-0">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                  </svg>
+              <div className="flex items-start gap-4 bg-white border border-slate-200/70 p-5 rounded-lg shadow-[0_10px_30px_rgba(15,23,42,0.035)] group hover:border-[#C5A880]/45 hover:-translate-y-0.5 transition-all duration-300">
+                <div className="w-11 h-11 rounded-lg bg-[#C5A880]/10 flex items-center justify-center text-[#C5A880] shrink-0 ring-1 ring-[#C5A880]/15">
+                  <Layers3 size={21} strokeWidth={1.8} />
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Structure</span>
-                  <span className="text-sm font-semibold text-slate-800">Édifiée sur 2 Étages</span>
+                <div className="min-w-0 space-y-2">
+                  <span className="text-[10px] text-[#9D7E4E] font-bold uppercase tracking-[0.18em] block">Structure</span>
+                  <div className="leading-tight">
+                    <span className="block text-[15px] font-bold text-slate-900">Édifiée sur 2 étages</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">Espaces modulables selon votre événement</span>
+                  </div>
                 </div>
               </div>
             </div>
