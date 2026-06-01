@@ -480,7 +480,7 @@ export function SettingsPanel({
                             <span>{uploadingImageSlot === `pack:${pack.id}:add` ? "Upload..." : "Ajouter une photo"}</span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png,image/webp,image/avif"
                               className="sr-only"
                               disabled={uploadingImageSlot === `pack:${pack.id}:add`}
                               onChange={(event) => {
@@ -784,7 +784,7 @@ function PhotoSlotCard({
           <span>{isUploading ? "Upload..." : "Changer"}</span>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/avif"
             className="sr-only"
             disabled={isUploading || isDeleting}
             onChange={(event) => {

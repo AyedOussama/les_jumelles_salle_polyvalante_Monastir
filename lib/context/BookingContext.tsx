@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
 import { 
+  getPublicAvailabilityAction,
   getBookingsAction, 
   createBookingAction, 
   approveBookingAction, 
@@ -9,7 +10,8 @@ import {
   cancelBookingAction,
   updateBookingAction,
   type BookingData,
-  type BookingExtras
+  type BookingExtras,
+  type PublicBookingAvailability
 } from "@/app/actions/booking";
 
 export interface Booking {
@@ -29,13 +31,18 @@ export interface Booking {
   advancePayment?: number;
   remainingAmount?: number;
   adminNotes?: string;
+  createdAt?: string;
 }
 
 type BookingUpdateData = Partial<Omit<Booking, "id" | "dossierNum">>;
 
 interface BookingContextType {
   bookings: Booking[];
+  availability: PublicBookingAvailability[];
   isInitialized: boolean;
+  isAdminInitialized: boolean;
+  refreshAvailability: () => Promise<void>;
+  loadAdminBookings: () => Promise<void>;
   addBooking: (bookingData: Omit<Booking, "id" | "status" | "dossierNum">) => Promise<string>;
   approveBooking: (id: number) => Promise<void>;
   rejectBooking: (id: number) => Promise<void>;
@@ -47,34 +54,50 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [availability, setAvailability] = useState<PublicBookingAvailability[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAdminInitialized, setIsAdminInitialized] = useState(false);
 
-  // Load bookings from database on mount
+  const refreshAvailability = useCallback(async () => {
+    const publicAvailability = await getPublicAvailabilityAction();
+    setAvailability(publicAvailability);
+  }, []);
+
+  const loadAdminBookings = useCallback(async () => {
+    const dbBookings = await getBookingsAction();
+    setBookings(dbBookings);
+    setIsAdminInitialized(true);
+  }, []);
+
   useEffect(() => {
-    async function loadBookings() {
+    let isMounted = true;
+
+    async function loadAvailability() {
       try {
-        const dbBookings = await getBookingsAction();
-        setBookings(dbBookings);
+        const publicAvailability = await getPublicAvailabilityAction();
+        if (isMounted) {
+          setAvailability(publicAvailability);
+        }
       } catch (error) {
-        console.error("Failed to load bookings from database:", error);
+        console.error("Failed to load public availability:", error);
       } finally {
-        setIsInitialized(true);
+        if (isMounted) {
+          setIsInitialized(true);
+        }
       }
     }
-    loadBookings();
 
-    // Silent background polling every 15 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        const freshBookings = await getBookingsAction();
-        setBookings(freshBookings);
-      } catch (error) {
-        // Silently fail — don't disrupt the UI
-        console.warn("Background refresh failed:", error);
-      }
-    }, 15000);
+    loadAvailability();
 
-    return () => clearInterval(pollInterval);
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void loadAvailability();
+    }, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const addBooking = async (bookingData: Omit<Booking, "id" | "status" | "dossierNum">) => {
@@ -94,8 +117,8 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
       const result = await createBookingAction(dataToSubmit);
       
-      if (result.success && result.booking) {
-        setBookings((prev) => [...prev, result.booking as Booking]);
+      if (result.success) {
+        await refreshAvailability();
         return result.dossierNum;
       } else {
         throw new Error("Failed to create booking.");
@@ -113,6 +136,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? { ...b, status: "confirmed" } : b))
         );
+        await refreshAvailability();
       }
     } catch (error) {
       console.error("Error approving booking:", error);
@@ -127,6 +151,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? { ...b, status: "rejected" } : b))
         );
+        await refreshAvailability();
       }
     } catch (error) {
       console.error("Error rejecting booking:", error);
@@ -141,6 +166,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? { ...b, status: "pending" } : b))
         );
+        await refreshAvailability();
       }
     } catch (error) {
       console.error("Error cancelling booking:", error);
@@ -155,6 +181,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? { ...b, ...(result.booking as Booking) } : b))
         );
+        await refreshAvailability();
       }
     } catch (error) {
       console.error("Error updating booking:", error);
@@ -166,7 +193,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     <BookingContext.Provider
       value={{
         bookings,
+        availability,
         isInitialized,
+        isAdminInitialized,
+        refreshAvailability,
+        loadAdminBookings,
         addBooking,
         approveBooking,
         rejectBooking,

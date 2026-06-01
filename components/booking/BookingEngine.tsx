@@ -17,7 +17,7 @@ const MONTH_NAMES_FR = [
 ];
 
 export default function BookingEngine(): React.ReactElement {
-  const { bookings, addBooking } = useBookings();
+  const { availability, addBooking } = useBookings();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
 
   // Completion states
@@ -25,8 +25,11 @@ export default function BookingEngine(): React.ReactElement {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [dossierNum, setDossierNum] = useState("");
 
-  // Dynamic Calendar Navigation state (defaults starting on May 2026)
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 4, 1));
+  // Dynamic Calendar Navigation state (defaults to the current month)
+  const [currentDate, setCurrentDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
 
   // Booking details states
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
@@ -140,7 +143,7 @@ export default function BookingEngine(): React.ReactElement {
 
   // Computes the status for matinee/soiree slots
   const getSlotStatus = (day: number, slot: "matinee" | "soiree") => {
-    const dayBookings = bookings.filter((b) =>
+    const dayBookings = availability.filter((b) =>
       b.date === day &&
       b.slot === slot &&
       (b.status === "pending" || b.status === "confirmed") &&
@@ -157,13 +160,14 @@ export default function BookingEngine(): React.ReactElement {
   };
 
   const getPendingCount = (day: number, slot: "matinee" | "soiree") => {
-    return bookings.filter((b) =>
+    const slotAvailability = availability.find((b) =>
       b.date === day &&
       b.slot === slot &&
-      b.status === "pending" &&
       (b.month === undefined ? 4 : b.month) === currentMonth &&
       (b.year === undefined ? 2026 : b.year) === currentYear
-    ).length;
+    );
+
+    return slotAvailability?.pendingCount || 0;
   };
 
   const handlePrevMonth = () => {

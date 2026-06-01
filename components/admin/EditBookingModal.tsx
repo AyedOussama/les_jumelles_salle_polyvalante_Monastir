@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, ShieldCheck, X } from "lucide-react";
+import { Calendar, Clock4, ShieldCheck, X } from "lucide-react";
 import type { Booking } from "@/lib/context/BookingContext";
 import type { SettingExtra } from "@/app/actions/settings";
 
@@ -9,6 +9,19 @@ const MONTH_NAMES_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
+
+function formatReservationCreatedAt(value?: string) {
+  if (!value) return "Date de demande indisponible";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date de demande indisponible";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Tunis",
+  }).format(date);
+}
 
 interface EditBookingModalProps {
   booking: Booking;
@@ -81,6 +94,10 @@ export function EditBookingModal({
             <h3 className="text-xl font-serif font-bold text-slate-900 mt-1">
               Détails de la réservation
             </h3>
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 shadow-sm">
+              <Clock4 size={13} className="text-[#C5A880]" />
+              Demande reçue le {formatReservationCreatedAt(booking.createdAt)}
+            </p>
           </div>
           <button
             onClick={onClose}

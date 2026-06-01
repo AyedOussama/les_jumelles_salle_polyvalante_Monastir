@@ -10,8 +10,18 @@ import { checkAdminSession } from "./auth";
 
 const SETTINGS_FILE_PATH = path.join(process.cwd(), "lib", "data", "settings.json");
 const SETTINGS_DB_KEY = "site-settings";
+const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+]);
+const CLOUDINARY_ALLOWED_FORMATS = "jpg,jpeg,png,webp,avif";
 
 let settingsTableReady: Promise<void> | null = null;
+let cachedSettings: { value: SystemSettings; expiresAt: number } | null = null;
 
 export interface SiteImage {
   url: string;
@@ -204,6 +214,21 @@ function toPrismaJson(settings: SystemSettings): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(settings)) as Prisma.InputJsonValue;
 }
 
+function getCachedSettings() {
+  if (!cachedSettings || cachedSettings.expiresAt < Date.now()) {
+    return null;
+  }
+
+  return cachedSettings.value;
+}
+
+function setCachedSettings(settings: SystemSettings) {
+  cachedSettings = {
+    value: settings,
+    expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS,
+  };
+}
+
 function parseStoredSettings(value: unknown): SystemSettings {
   if (typeof value === "string") {
     return normalizeSettings(JSON.parse(value) as Partial<SystemSettings>);
@@ -255,17 +280,47 @@ async function readSettingsFromDatabase(): Promise<SystemSettings | null> {
   return record ? parseStoredSettings(record.value) : null;
 }
 
-function validateImageFile(file: FormDataEntryValue | null): File {
+async function validateImageFile(file: FormDataEntryValue | null): Promise<File> {
   if (!(file instanceof File) || file.size === 0) {
     throw new Error("Aucune image valide n'a été sélectionnée.");
   }
 
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Le fichier choisi doit être une image.");
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Formats acceptés : JPG, PNG, WebP ou AVIF.");
   }
 
-  if (file.size > 8 * 1024 * 1024) {
-    throw new Error("L'image ne doit pas dépasser 8 Mo.");
+  if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new Error("L'image ne doit pas dépasser 4 Mo.");
+  }
+
+  const signature = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const isJpeg = signature[0] === 0xff && signature[1] === 0xd8 && signature[2] === 0xff;
+  const isPng =
+    signature[0] === 0x89 &&
+    signature[1] === 0x50 &&
+    signature[2] === 0x4e &&
+    signature[3] === 0x47;
+  const isWebp =
+    signature[0] === 0x52 &&
+    signature[1] === 0x49 &&
+    signature[2] === 0x46 &&
+    signature[3] === 0x46 &&
+    signature[8] === 0x57 &&
+    signature[9] === 0x45 &&
+    signature[10] === 0x42 &&
+    signature[11] === 0x50;
+  const isAvif =
+    signature[4] === 0x66 &&
+    signature[5] === 0x74 &&
+    signature[6] === 0x79 &&
+    signature[7] === 0x70 &&
+    signature[8] === 0x61 &&
+    signature[9] === 0x76 &&
+    signature[10] === 0x69 &&
+    signature[11] === 0x66;
+
+  if (!isJpeg && !isPng && !isWebp && !isAvif) {
+    throw new Error("Le contenu du fichier ne correspond pas à une image autorisée.");
   }
 
   return file;
@@ -285,6 +340,7 @@ async function persistSettings(settings: SystemSettings) {
     },
   });
 
+  setCachedSettings(normalizedSettings);
   revalidateSettingsPaths();
   return normalizedSettings;
 }
@@ -294,8 +350,14 @@ async function persistSettings(settings: SystemSettings) {
  */
 export async function getSettingsAction(): Promise<SystemSettings> {
   try {
+    const cached = getCachedSettings();
+    if (cached) {
+      return cached;
+    }
+
     const storedSettings = await readSettingsFromDatabase();
     if (storedSettings) {
+      setCachedSettings(storedSettings);
       return storedSettings;
     }
 
@@ -387,6 +449,7 @@ async function uploadCloudinaryImage(file: File) {
   const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
   const timestamp = Math.round(Date.now() / 1000);
   const params = {
+    allowed_formats: CLOUDINARY_ALLOWED_FORMATS,
     folder: "les-jumelles/site",
     timestamp,
   };
@@ -394,6 +457,7 @@ async function uploadCloudinaryImage(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("api_key", apiKey);
+  formData.append("allowed_formats", CLOUDINARY_ALLOWED_FORMATS);
   formData.append("folder", params.folder);
   formData.append("timestamp", String(timestamp));
   formData.append("signature", signCloudinaryParams(params, apiSecret));
@@ -422,6 +486,9 @@ function resolveSiteImage(settings: SystemSettings, slot: string): SiteImage | u
 
   if (section === "gallery") {
     const index = Number(first);
+    if (!Number.isInteger(index) || index < 0 || index >= DEFAULT_GALLERY_IMAGES.length) {
+      throw new Error("Emplacement de galerie invalide.");
+    }
     return settings.siteImages.gallery[index] || DEFAULT_GALLERY_IMAGES[index];
   }
 
@@ -429,6 +496,10 @@ function resolveSiteImage(settings: SystemSettings, slot: string): SiteImage | u
     const packId = Number(first);
     const imageIndex = Number(second);
     const pack = settings.packs.find((item) => item.id === packId);
+    const imageCount = pack?.images?.length || DEFAULT_PACK_IMAGES[packId]?.length || 0;
+    if (!pack || !Number.isInteger(imageIndex) || imageIndex < 0 || imageIndex >= imageCount) {
+      throw new Error("Emplacement de formule invalide.");
+    }
     return pack?.images?.[imageIndex] || DEFAULT_PACK_IMAGES[packId]?.[imageIndex] || DEFAULT_PACK_IMAGES[1][imageIndex];
   }
 
@@ -486,7 +557,7 @@ export async function uploadSiteImageAction(slot: string, formData: FormData) {
       throw new Error("Session administrateur expirée.");
     }
 
-    const file = validateImageFile(formData.get("file"));
+    const file = await validateImageFile(formData.get("file"));
 
     const currentSettings = await getSettingsAction();
     const previousImage = resolveSiteImage(currentSettings, slot);
@@ -522,7 +593,11 @@ export async function uploadPackImageAction(packId: number, formData: FormData) 
       throw new Error("Session administrateur expirée.");
     }
 
-    const file = validateImageFile(formData.get("file"));
+    if (!Number.isInteger(packId) || packId <= 0) {
+      throw new Error("Formule invalide.");
+    }
+
+    const file = await validateImageFile(formData.get("file"));
     const currentSettings = await getSettingsAction();
     const pack = currentSettings.packs.find((item) => item.id === packId);
 

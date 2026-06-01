@@ -20,6 +20,19 @@ const MONTH_NAMES_FR = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
 
+function formatReservationCreatedAt(value?: string) {
+  if (!value) return "Date de demande indisponible";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date de demande indisponible";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Tunis",
+  }).format(date);
+}
+
 type DestructiveAction = "reject" | "cancel";
 
 interface PendingDestructiveAction {
@@ -287,7 +300,14 @@ function PendingBookings({
                                       {isConflict ? `Attente n°${queueIndex + 1}` : `Priorité n°${queueIndex + 1}`}
                                     </span>
                                   </div>
-                                  <span className="text-xs font-mono text-slate-400">Dossier {booking.dossierNum}</span>
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                                    <span className="font-mono">Dossier {booking.dossierNum}</span>
+                                    <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block"></span>
+                                    <span className="inline-flex items-center gap-1 font-medium text-slate-500">
+                                      <Clock4 size={12} className="text-[#C5A880]" />
+                                      Reçue le {formatReservationCreatedAt(booking.createdAt)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                               {isConflict && (
@@ -409,6 +429,10 @@ function ConfirmedBookings({
                     <td className="px-6 py-4">
                       <div className="font-mono text-[#C5A880] font-bold text-xs mb-1">
                         {booking.dossierNum}
+                      </div>
+                      <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <Clock4 size={11} className="text-[#C5A880]" />
+                        Reçue le {formatReservationCreatedAt(booking.createdAt)}
                       </div>
                       <div className="font-serif font-bold text-sm text-slate-900 mb-0.5">
                         {booking.date} {bookingMonth} {bookingYear}
@@ -578,6 +602,7 @@ function DestructiveActionDialog({
               <TraceDetail label="Client" value={booking.name} strong />
               <TraceDetail label="Date" value={`${booking.date} ${bookingMonth} ${bookingYear}`} />
               <TraceDetail label="Créneau" value={booking.slot === "matinee" ? "Matinée" : "Soirée"} />
+              <TraceDetail label="Demande reçue" value={formatReservationCreatedAt(booking.createdAt)} />
               <TraceDetail label="Téléphone" value={booking.phone} />
               <TraceDetail label="Événement" value={booking.eventType} />
             </div>

@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
     display: "WhatsApp",
     href: "https://wa.me/21656806935",
   },
-  email: "contact@lesjumelles-monastir.com",
+  email: "lesjumelles625@gmail.com",
   address: {
     display: "Avenue Trimeche, Monastir 5000, Tunisie",
     invoice: "Salle Les Jumelles Monastir - pres de gouvernorat",

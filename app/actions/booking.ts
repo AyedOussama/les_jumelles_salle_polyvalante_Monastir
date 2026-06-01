@@ -4,12 +4,25 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { sendBookingNotificationEmail } from "@/lib/email/booking-notification";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { requireAdminSession } from "./auth";
 import { getSettingsAction } from "./settings";
 
 const LEGACY_EXTRA_KEYS = ["decoration", "sonorisation", "climatisation", "traiteur", "autres"] as const;
+const BOOKING_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const MAX_BOOKINGS_PER_WINDOW = 5;
 
 type BookingExtraKey = (typeof LEGACY_EXTRA_KEYS)[number];
 export type BookingExtras = Record<string, boolean>;
+
+export interface PublicBookingAvailability {
+  date: number;
+  month: number;
+  year: number;
+  slot: "matinee" | "soiree";
+  status: "pending" | "confirmed";
+  pendingCount: number;
+}
 
 let bookingExtrasColumnReady: Promise<void> | null = null;
 
@@ -28,6 +41,21 @@ export interface BookingData {
 }
 
 type BookingStatus = "pending" | "confirmed" | "rejected" | "cancelled";
+
+type BookingSubmissionAttempt = {
+  count: number;
+  firstAttemptAt: number;
+};
+
+const globalForBookingRateLimit = globalThis as typeof globalThis & {
+  bookingSubmissionAttempts?: Map<string, BookingSubmissionAttempt>;
+};
+
+const bookingSubmissionAttempts =
+  globalForBookingRateLimit.bookingSubmissionAttempts ??
+  new Map<string, BookingSubmissionAttempt>();
+
+globalForBookingRateLimit.bookingSubmissionAttempts = bookingSubmissionAttempts;
 
 function normalizeExtras(extras?: BookingExtras | null): BookingExtras {
   const normalized: BookingExtras = {};
@@ -99,6 +127,125 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+async function getClientKey() {
+  const requestHeaders = await headers();
+  const forwardedFor = requestHeaders.get("x-forwarded-for");
+  const ip = forwardedFor?.split(",")[0]?.trim();
+
+  return ip || requestHeaders.get("x-real-ip") || "unknown";
+}
+
+async function assertBookingSubmissionAllowed() {
+  const clientKey = await getClientKey();
+  const now = Date.now();
+  const attempt = bookingSubmissionAttempts.get(clientKey);
+
+  if (!attempt || now - attempt.firstAttemptAt > BOOKING_RATE_LIMIT_WINDOW_MS) {
+    bookingSubmissionAttempts.set(clientKey, {
+      count: 1,
+      firstAttemptAt: now,
+    });
+    return;
+  }
+
+  if (attempt.count >= MAX_BOOKINGS_PER_WINDOW) {
+    throw new Error(
+      "Trop de demandes depuis cette connexion. Réessayez plus tard ou contactez-nous par téléphone."
+    );
+  }
+
+  attempt.count += 1;
+}
+
+function assertPositiveInteger(value: unknown, label: string) {
+  if (!Number.isInteger(value) || Number(value) <= 0) {
+    throw new Error(`${label} invalide.`);
+  }
+}
+
+function validateBookingDate(
+  day: unknown,
+  month: unknown,
+  year: unknown,
+  options: { allowPast?: boolean } = {}
+) {
+  if (!Number.isInteger(day) || Number(day) < 1 || Number(day) > 31) {
+    throw new Error("Date invalide.");
+  }
+
+  if (!Number.isInteger(month) || Number(month) < 0 || Number(month) > 11) {
+    throw new Error("Mois invalide.");
+  }
+
+  const currentYear = new Date().getFullYear();
+  if (
+    !Number.isInteger(year) ||
+    Number(year) < currentYear ||
+    Number(year) > currentYear + 5
+  ) {
+    throw new Error("Année invalide.");
+  }
+
+  const eventDate = new Date(Number(year), Number(month), Number(day));
+  if (
+    eventDate.getFullYear() !== Number(year) ||
+    eventDate.getMonth() !== Number(month) ||
+    eventDate.getDate() !== Number(day)
+  ) {
+    throw new Error("Date invalide.");
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!options.allowPast && eventDate < today) {
+    throw new Error("La date sélectionnée est déjà passée.");
+  }
+}
+
+function validateSlot(slot: unknown): asserts slot is "matinee" | "soiree" {
+  if (slot !== "matinee" && slot !== "soiree") {
+    throw new Error("Créneau horaire invalide.");
+  }
+}
+
+function sanitizeText(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function sanitizeAmount(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.min(Math.max(value, 0), 1_000_000);
+}
+
+function assertValidStatus(status: unknown): asserts status is BookingStatus {
+  if (
+    status !== "pending" &&
+    status !== "confirmed" &&
+    status !== "rejected" &&
+    status !== "cancelled"
+  ) {
+    throw new Error("Statut invalide.");
+  }
+}
+
+function toPublicAvailabilityEntry(booking: {
+  date: number;
+  month: number;
+  year: number;
+  slot: string;
+  status: string;
+  pendingCount?: number;
+}): PublicBookingAvailability {
+  return {
+    date: booking.date,
+    month: booking.month,
+    year: booking.year,
+    slot: booking.slot as "matinee" | "soiree",
+    status: booking.status === "confirmed" ? "confirmed" : "pending",
+    pendingCount: booking.pendingCount || 0,
+  };
+}
+
 async function ensureBookingExtrasColumn() {
   if (!bookingExtrasColumnReady) {
     bookingExtrasColumnReady = prisma.$executeRaw`
@@ -114,10 +261,64 @@ async function ensureBookingExtrasColumn() {
 }
 
 /**
- * Fetch all bookings from the Neon PostgreSQL database.
+ * Fetch anonymous slot availability for the public booking calendar.
+ * It intentionally excludes names, phone numbers, dossier numbers, payments and notes.
+ */
+export async function getPublicAvailabilityAction(): Promise<PublicBookingAvailability[]> {
+  try {
+    const dbBookings = await prisma.booking.findMany({
+      where: {
+        status: { in: ["pending", "confirmed"] },
+      },
+      select: {
+        date: true,
+        month: true,
+        year: true,
+        slot: true,
+        status: true,
+      },
+    });
+
+    const bySlot = new Map<string, PublicBookingAvailability>();
+
+    dbBookings.forEach((booking) => {
+      if (booking.slot !== "matinee" && booking.slot !== "soiree") return;
+
+      const key = `${booking.year}-${booking.month}-${booking.date}-${booking.slot}`;
+      const current =
+        bySlot.get(key) ||
+        toPublicAvailabilityEntry({
+          date: booking.date,
+          month: booking.month,
+          year: booking.year,
+          slot: booking.slot,
+          status: "pending",
+        });
+
+      if (booking.status === "confirmed") {
+        current.status = "confirmed";
+      }
+
+      if (booking.status === "pending") {
+        current.pendingCount += 1;
+      }
+
+      bySlot.set(key, current);
+    });
+
+    return Array.from(bySlot.values());
+  } catch (error) {
+    console.error("[Prisma getPublicAvailabilityAction Error]:", error);
+    throw new Error("Impossible de charger les disponibilités.");
+  }
+}
+
+/**
+ * Fetch all bookings from the Neon PostgreSQL database for authenticated admins only.
  */
 export async function getBookingsAction() {
   try {
+    await requireAdminSession();
     await ensureBookingExtrasColumn();
 
     const dbBookings = await prisma.booking.findMany({
@@ -141,6 +342,7 @@ export async function getBookingsAction() {
       advancePayment: b.advancePayment || 0,
       remainingAmount: b.remainingAmount || 0,
       adminNotes: b.adminNotes || "",
+      createdAt: b.createdAt.toISOString(),
     }));
   } catch (error) {
     console.error("[Prisma getBookingsAction Error]:", error);
@@ -153,26 +355,32 @@ export async function getBookingsAction() {
  */
 export async function createBookingAction(data: BookingData) {
   try {
+    await assertBookingSubmissionAllowed();
     await ensureBookingExtrasColumn();
 
-    // Validation des données d'entrée
-    if (!data.name?.trim() || !data.phone?.trim() || !data.eventType?.trim()) {
+    const safeName = sanitizeText(data.name, 100);
+    const safePhone = sanitizeText(data.phone, 24);
+    const safeEventType = sanitizeText(data.eventType, 80);
+    const safeSpecialNeeds = sanitizeText(data.specialNeeds, 500);
+
+    if (!safeName || !safePhone || !safeEventType) {
       throw new Error("Nom, téléphone et type d'événement sont obligatoires.");
     }
-    if (!data.slot || !["matinee", "soiree"].includes(data.slot)) {
-      throw new Error("Créneau horaire invalide.");
-    }
-    if (!data.date || data.date < 1 || data.date > 31) {
-      throw new Error("Date invalide.");
+
+    if (!/^[+()\d\s.-]{8,24}$/.test(safePhone)) {
+      throw new Error("Numéro de téléphone invalide.");
     }
 
-    // Nettoyage des chaînes
-    const safeName = data.name.trim().slice(0, 100);
-    const safePhone = data.phone.trim().slice(0, 20);
-    const safeEventType = data.eventType.trim().slice(0, 50);
-    const safeSpecialNeeds = (data.specialNeeds || "").trim().slice(0, 500);
+    validateSlot(data.slot);
+    validateBookingDate(data.date, data.month, data.year);
+
+    if (typeof data.extras !== "object" || data.extras === null) {
+      throw new Error("Options de réservation invalides.");
+    }
+
     const safeExtras = normalizeExtras(data.extras);
     const legacyExtras = buildLegacyExtras(safeExtras);
+    const safeTotalPrice = sanitizeAmount(data.totalPrice);
 
     let dossierNum = "";
     let isUnique = false;
@@ -212,35 +420,38 @@ export async function createBookingAction(data: BookingData) {
         traiteur: legacyExtras.traiteur,
         autres: legacyExtras.autres,
         extrasData: toPrismaJson(safeExtras),
-        totalPrice: data.totalPrice || 0,
+        totalPrice: safeTotalPrice,
       },
     });
 
     revalidatePath("/(admin)/dashboard");
     revalidatePath("/");
 
-    const responseBooking = {
-      id: newBooking.id,
+    const notificationBooking = {
       dossierNum: newBooking.dossierNum,
       date: newBooking.date,
       month: newBooking.month,
       year: newBooking.year,
       slot: newBooking.slot as "matinee" | "soiree",
-      status: newBooking.status as BookingStatus,
       name: newBooking.name,
       phone: newBooking.phone,
       eventType: newBooking.eventType,
       specialNeeds: newBooking.specialNeeds || "",
       extras: buildBookingExtras(newBooking),
       totalPrice: newBooking.totalPrice || 0,
-      advancePayment: 0,
-      remainingAmount: 0,
-      adminNotes: "",
     };
+    const publicBooking = toPublicAvailabilityEntry({
+      date: newBooking.date,
+      month: newBooking.month,
+      year: newBooking.year,
+      slot: newBooking.slot,
+      status: newBooking.status,
+      pendingCount: 1,
+    });
 
     try {
       const settings = await getSettingsAction();
-      await sendBookingNotificationEmail(responseBooking, settings);
+      await sendBookingNotificationEmail(notificationBooking, settings);
     } catch (emailError) {
       console.error("[Booking notification email Error]:", emailError);
     }
@@ -248,7 +459,7 @@ export async function createBookingAction(data: BookingData) {
     return {
       success: true,
       dossierNum: newBooking.dossierNum,
-      booking: responseBooking,
+      booking: publicBooking,
     };
   } catch (error) {
     console.error("[Prisma createBookingAction Error]:", error);
@@ -261,6 +472,8 @@ export async function createBookingAction(data: BookingData) {
  */
 export async function approveBookingAction(id: number) {
   try {
+    await requireAdminSession();
+    assertPositiveInteger(id, "Réservation");
     await ensureBookingExtrasColumn();
 
     const existing = await prisma.booking.findUnique({
@@ -273,6 +486,21 @@ export async function approveBookingAction(id: number) {
 
     if ((existing.advancePayment || 0) <= 0) {
       throw new Error("Le montant d'avance est obligatoire avant de confirmer la réservation.");
+    }
+
+    const conflictingBooking = await prisma.booking.findFirst({
+      where: {
+        id: { not: id },
+        status: "confirmed",
+        date: existing.date,
+        month: existing.month,
+        year: existing.year,
+        slot: existing.slot,
+      },
+    });
+
+    if (conflictingBooking) {
+      throw new Error("Ce créneau est déjà confirmé pour un autre client.");
     }
 
     const updated = await prisma.booking.update({
@@ -294,11 +522,17 @@ export async function approveBookingAction(id: number) {
  */
 export async function rejectBookingAction(id: number) {
   try {
+    await requireAdminSession();
+    assertPositiveInteger(id, "Réservation");
     await ensureBookingExtrasColumn();
 
     const existing = await prisma.booking.findUnique({
       where: { id },
     });
+
+    if (!existing) {
+      throw new Error("Réservation introuvable.");
+    }
 
     const timestamp = new Date().toISOString();
     const updated = await prisma.booking.update({
@@ -323,6 +557,8 @@ export async function rejectBookingAction(id: number) {
  */
 export async function cancelBookingAction(id: number) {
   try {
+    await requireAdminSession();
+    assertPositiveInteger(id, "Réservation");
     await ensureBookingExtrasColumn();
 
     const existing = await prisma.booking.findUnique({
@@ -371,6 +607,8 @@ export async function updateBookingAction(id: number, data: {
   status?: BookingStatus;
 }) {
   try {
+    await requireAdminSession();
+    assertPositiveInteger(id, "Réservation");
     await ensureBookingExtrasColumn();
 
     const existing = await prisma.booking.findUnique({
@@ -381,37 +619,53 @@ export async function updateBookingAction(id: number, data: {
       throw new Error("Réservation introuvable.");
     }
 
-    const updateData: Record<string, string | number | boolean | Prisma.InputJsonValue> = {};
-    if (data.date !== undefined) {
-      if (data.date < 1 || data.date > 31) throw new Error("Date invalide.");
-      updateData.date = data.date;
+    if (!data || typeof data !== "object") {
+      throw new Error("Données de réservation invalides.");
     }
-    if (data.month !== undefined) {
-      if (data.month < 0 || data.month > 11) throw new Error("Mois invalide.");
-      updateData.month = data.month;
-    }
-    if (data.year !== undefined) {
-      if (data.year < 2024 || data.year > 2100) throw new Error("Année invalide.");
-      updateData.year = data.year;
-    }
-    if (data.slot !== undefined) {
-      if (!["matinee", "soiree"].includes(data.slot)) throw new Error("Créneau invalide.");
-      updateData.slot = data.slot;
-    }
-    if (data.name !== undefined) updateData.name = data.name.trim();
-    if (data.phone !== undefined) updateData.phone = data.phone.trim();
-    if (data.eventType !== undefined) updateData.eventType = data.eventType;
-    if (data.specialNeeds !== undefined) updateData.specialNeeds = data.specialNeeds.trim();
-    if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice;
-    if (data.advancePayment !== undefined) updateData.advancePayment = data.advancePayment;
-    if (data.remainingAmount !== undefined) updateData.remainingAmount = data.remainingAmount;
-    if (data.adminNotes !== undefined) updateData.adminNotes = data.adminNotes.trim();
-    if (data.status !== undefined) updateData.status = data.status;
 
-    const nextAdvancePayment = data.advancePayment ?? existing.advancePayment;
+    const updateData: Record<string, string | number | boolean | Prisma.InputJsonValue> = {};
     const nextDate = data.date ?? existing.date;
     const nextMonth = data.month ?? existing.month;
     const nextYear = data.year ?? existing.year;
+    validateBookingDate(nextDate, nextMonth, nextYear, { allowPast: true });
+    if (data.date !== undefined) updateData.date = data.date;
+    if (data.month !== undefined) updateData.month = data.month;
+    if (data.year !== undefined) updateData.year = data.year;
+    if (data.slot !== undefined) {
+      validateSlot(data.slot);
+      updateData.slot = data.slot;
+    }
+    if (data.name !== undefined) {
+      const safeName = sanitizeText(data.name, 100);
+      if (!safeName) throw new Error("Nom invalide.");
+      updateData.name = safeName;
+    }
+    if (data.phone !== undefined) {
+      const safePhone = sanitizeText(data.phone, 24);
+      if (!/^[+()\d\s.-]{8,24}$/.test(safePhone)) {
+        throw new Error("Numéro de téléphone invalide.");
+      }
+      updateData.phone = safePhone;
+    }
+    if (data.eventType !== undefined) {
+      const safeEventType = sanitizeText(data.eventType, 80);
+      if (!safeEventType) throw new Error("Type d'événement invalide.");
+      updateData.eventType = safeEventType;
+    }
+    if (data.specialNeeds !== undefined) updateData.specialNeeds = sanitizeText(data.specialNeeds, 500);
+    if (data.totalPrice !== undefined) updateData.totalPrice = sanitizeAmount(data.totalPrice);
+    if (data.advancePayment !== undefined) updateData.advancePayment = sanitizeAmount(data.advancePayment);
+    if (data.remainingAmount !== undefined) updateData.remainingAmount = sanitizeAmount(data.remainingAmount);
+    if (data.adminNotes !== undefined) updateData.adminNotes = sanitizeText(data.adminNotes, 2000);
+    if (data.status !== undefined) {
+      assertValidStatus(data.status);
+      updateData.status = data.status;
+    }
+
+    const nextAdvancePayment =
+      data.advancePayment !== undefined
+        ? sanitizeAmount(data.advancePayment)
+        : existing.advancePayment;
     const nextSlot = data.slot ?? (existing.slot as "matinee" | "soiree");
     const nextStatus = data.status ?? (existing.status as BookingStatus);
     const hasDateChanged =
@@ -487,6 +741,7 @@ export async function updateBookingAction(id: number, data: {
         advancePayment: updated.advancePayment,
         remainingAmount: updated.remainingAmount,
         adminNotes: updated.adminNotes || "",
+        createdAt: updated.createdAt.toISOString(),
       }
     };
   } catch (error) {
