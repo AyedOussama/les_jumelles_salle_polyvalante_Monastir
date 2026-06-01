@@ -212,6 +212,17 @@ function sanitizeText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function validatePhoneNumber(phone: string) {
+  if (!/^[+\d\s()./-]{6,32}$/.test(phone)) {
+    throw new Error("Numéro de téléphone invalide.");
+  }
+
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error("Numéro de téléphone invalide.");
+  }
+}
+
 function sanitizeAmount(value: unknown) {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   return Math.min(Math.max(value, 0), 1_000_000);
@@ -226,6 +237,26 @@ function assertValidStatus(status: unknown): asserts status is BookingStatus {
   ) {
     throw new Error("Statut invalide.");
   }
+}
+
+function getPublicCreateBookingError(error: unknown) {
+  const message = getErrorMessage(error, "");
+  const publicMessages = new Set([
+    "Nom, téléphone et type d'événement sont obligatoires.",
+    "Numéro de téléphone invalide.",
+    "Créneau horaire invalide.",
+    "Date invalide.",
+    "Mois invalide.",
+    "Année invalide.",
+    "La date sélectionnée est déjà passée.",
+    "Options de réservation invalides.",
+    "Impossible de générer un numéro de dossier unique après plusieurs tentatives.",
+    "Trop de demandes depuis cette connexion. Réessayez plus tard ou contactez-nous par téléphone.",
+  ]);
+
+  return publicMessages.has(message)
+    ? message
+    : "Impossible d'enregistrer la réservation pour le moment. Veuillez réessayer.";
 }
 
 function toPublicAvailabilityEntry(booking: {
@@ -367,9 +398,7 @@ export async function createBookingAction(data: BookingData) {
       throw new Error("Nom, téléphone et type d'événement sont obligatoires.");
     }
 
-    if (!/^[+()\d\s.-]{8,24}$/.test(safePhone)) {
-      throw new Error("Numéro de téléphone invalide.");
-    }
+    validatePhoneNumber(safePhone);
 
     validateSlot(data.slot);
     validateBookingDate(data.date, data.month, data.year);
@@ -457,13 +486,16 @@ export async function createBookingAction(data: BookingData) {
     }
 
     return {
-      success: true,
+      success: true as const,
       dossierNum: newBooking.dossierNum,
       booking: publicBooking,
     };
   } catch (error) {
     console.error("[Prisma createBookingAction Error]:", error);
-    throw new Error("Échec de la création de la réservation.");
+    return {
+      success: false as const,
+      error: getPublicCreateBookingError(error),
+    };
   }
 }
 
@@ -642,9 +674,7 @@ export async function updateBookingAction(id: number, data: {
     }
     if (data.phone !== undefined) {
       const safePhone = sanitizeText(data.phone, 24);
-      if (!/^[+()\d\s.-]{8,24}$/.test(safePhone)) {
-        throw new Error("Numéro de téléphone invalide.");
-      }
+      validatePhoneNumber(safePhone);
       updateData.phone = safePhone;
     }
     if (data.eventType !== undefined) {

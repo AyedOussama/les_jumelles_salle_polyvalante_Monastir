@@ -121,7 +121,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         await refreshAvailability();
         return result.dossierNum;
       } else {
-        throw new Error("Failed to create booking.");
+        throw new Error(result.error || "Impossible d'enregistrer la réservation.");
       }
     } catch (error) {
       console.error("Error adding booking:", error);

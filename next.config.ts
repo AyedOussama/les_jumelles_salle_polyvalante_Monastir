@@ -5,10 +5,10 @@ const isDev = process.env.NODE_ENV === "development";
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://images.unsplash.com https://res.cloudinary.com",
   "media-src 'self' blob: https://cdn.coverr.co https://assets.mixkit.co",
-  "font-src 'self'",
+  "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
   "frame-src https://www.google.com https://maps.google.com",
   "object-src 'none'",
