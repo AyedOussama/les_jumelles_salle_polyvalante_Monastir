@@ -237,24 +237,9 @@ export default function BookingEngine(): React.ReactElement {
   const handleConfirmOrder = async () => {
     if (!selectedDate || !selectedSlot) return;
 
-    // Build list of chosen dynamic extras to append to specialNeeds for admin visibility
-    const selectedDynamicExtrasList = Object.entries(extras)
-      .filter(([k, v]) => v && !["decoration", "sonorisation", "climatisation", "traiteur"].includes(k))
-      .map(([k]) => getExtraLabel(k));
-
-    const extraSuffix = selectedDynamicExtrasList.length > 0
-      ? ` | Options sélectionnées: ${selectedDynamicExtrasList.join(", ")}`
-      : "";
-
-    const finalSpecialNeeds = `${formData.specialNeeds}${extraSuffix}`.trim();
-
-    const mappedExtrasForDb = {
-      decoration: !!extras.decoration,
-      sonorisation: !!extras.sonorisation,
-      climatisation: !!extras.climatisation,
-      traiteur: !!extras.traiteur,
-      autres: !!extras.autres || selectedDynamicExtrasList.length > 0,
-    };
+    const mappedExtrasForDb = Object.fromEntries(
+      Object.entries(extras).map(([key, value]) => [key, Boolean(value)]),
+    );
 
     try {
       const generatedCode = await addBooking({
@@ -265,7 +250,7 @@ export default function BookingEngine(): React.ReactElement {
         name: formData.name,
         phone: formData.phone,
         eventType: formData.eventType === "Autre" ? `Autre: ${customEventType}` : formData.eventType,
-        specialNeeds: finalSpecialNeeds,
+        specialNeeds: formData.specialNeeds.trim(),
         extras: mappedExtrasForDb,
         totalPrice: calculateTotalPrice(),
       });

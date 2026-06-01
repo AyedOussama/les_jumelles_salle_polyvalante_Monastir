@@ -14,7 +14,7 @@ const DEFAULT_EXTRA_LABELS: Record<string, string> = {
   sonorisation: "Sonorisation",
   climatisation: "Climatisation",
   traiteur: "Traiteur",
-  autres: "Spécifique",
+  autres: "Demande spécifique",
 };
 
 interface BookingNotificationPayload {

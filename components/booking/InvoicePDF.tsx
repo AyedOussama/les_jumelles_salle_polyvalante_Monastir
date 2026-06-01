@@ -1,6 +1,11 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { SITE_CONFIG } from '@/lib/constants';
 import type { SystemSettings } from '@/app/actions/settings';
+import {
+  hydrateExtrasFromOptionLabels,
+  normalizeOptionLabel,
+  splitBookingSpecialNeeds,
+} from '@/lib/bookingOptions';
 
 
 const MONTH_NAMES_FR = [
@@ -280,6 +285,7 @@ export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
   const logoUrl = typeof window !== 'undefined' ? `${window.location.origin}/logo_complet.png` : '/logo_complet.png';
   const bookingMonth = booking.month !== undefined ? MONTH_NAMES_FR[booking.month] : "Mai";
   const bookingYear = booking.year !== undefined ? booking.year : 2026;
+  const { clientNotes, optionLabels } = splitBookingSpecialNeeds(booking.specialNeeds);
 
   const defaultExtrasNames: Record<string, string> = {
     decoration: "Décoration Florale & Trône Premium",
@@ -292,13 +298,21 @@ export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
   const extraLabels = settings?.extras
     ? Object.fromEntries(Object.entries(settings.extras).map(([key, extra]) => [key, extra.label]))
     : defaultExtrasNames;
-  const selectedExtraKeys = Object.entries(booking.extras || {})
+  const hydratedExtras = hydrateExtrasFromOptionLabels(booking.extras, settings?.extras, optionLabels);
+  const selectedExtraKeys = Object.entries(hydratedExtras)
     .filter(([, selected]) => selected)
     .map(([key]) => key);
+  const selectedExtraLabels = new Set(
+    selectedExtraKeys.map((key) => normalizeOptionLabel(extraLabels[key] || key)),
+  );
   const extrasList = Array.from(new Set([...Object.keys(extraLabels), ...selectedExtraKeys])).map((key) => ({
     label: extraLabels[key] || key,
-    selected: !!booking.extras?.[key]
-  }));
+    selected: !!hydratedExtras[key]
+  })).concat(
+    optionLabels
+      .filter((label) => !selectedExtraLabels.has(normalizeOptionLabel(label)))
+      .map((label) => ({ label, selected: true })),
+  );
 
   return (
     <Document>
@@ -388,10 +402,10 @@ export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
         </View>
 
         {/* Special wishes */}
-        {booking.specialNeeds ? (
+        {clientNotes ? (
           <View style={styles.notesBox}>
             <Text style={styles.notesTitle}>Demandes & Instructions particulières client :</Text>
-            <Text style={styles.notesText}>{booking.specialNeeds}</Text>
+            <Text style={styles.notesText}>{clientNotes}</Text>
           </View>
         ) : null}
 

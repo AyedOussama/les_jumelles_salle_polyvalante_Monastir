@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Calendar, Clock4, ShieldCheck, X } from "lucide-react";
 import type { Booking } from "@/lib/context/BookingContext";
 import type { SettingExtra } from "@/app/actions/settings";
+import {
+  getExtraKeysForOptionLabels,
+  hydrateExtrasFromOptionLabels,
+  splitBookingSpecialNeeds,
+} from "@/lib/bookingOptions";
 
 const MONTH_NAMES_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -40,11 +45,18 @@ export function EditBookingModal({
   getExtraLabel,
   availableExtras,
 }: EditBookingModalProps) {
+  const parsedSpecialNeeds = splitBookingSpecialNeeds(booking.specialNeeds);
+  const matchedLegacyOptionKeys = getExtraKeysForOptionLabels(parsedSpecialNeeds.optionLabels, availableExtras);
+  const hasUnmatchedLegacyOptionLabels = parsedSpecialNeeds.optionLabels.length > matchedLegacyOptionKeys.length;
   const [name, setName] = useState(booking.name);
   const [phone, setPhone] = useState(booking.phone);
   const [eventType, setEventType] = useState(booking.eventType);
-  const [specialNeeds, setSpecialNeeds] = useState(booking.specialNeeds || "");
-  const [extras, setExtras] = useState<Booking["extras"]>(() => buildEditableExtras(booking.extras, availableExtras));
+  const [specialNeeds, setSpecialNeeds] = useState(
+    hasUnmatchedLegacyOptionLabels ? booking.specialNeeds || "" : parsedSpecialNeeds.clientNotes,
+  );
+  const [extras, setExtras] = useState<Booking["extras"]>(() =>
+    buildEditableExtras(booking.extras, availableExtras, parsedSpecialNeeds.optionLabels),
+  );
   const [totalPrice, setTotalPrice] = useState(booking.totalPrice || 0);
   const [advancePayment, setAdvancePayment] = useState(booking.advancePayment || 0);
   const [adminNotes, setAdminNotes] = useState(booking.adminNotes || "");
@@ -356,17 +368,23 @@ export function EditBookingModal({
 function buildEditableExtras(
   bookingExtras: Booking["extras"] | undefined,
   availableExtras: Record<string, SettingExtra> | undefined,
+  legacyOptionLabels: string[],
 ) {
   const legacyKeys = ["decoration", "sonorisation", "climatisation", "traiteur", "autres"];
   const configuredKeys = Object.keys(availableExtras || {});
   const baseKeys = configuredKeys.length > 0 ? configuredKeys : legacyKeys;
-  const selectedLegacyKeys = Object.entries(bookingExtras || {})
+  const hydratedBookingExtras = hydrateExtrasFromOptionLabels(
+    bookingExtras,
+    availableExtras,
+    legacyOptionLabels,
+  );
+  const selectedLegacyKeys = Object.entries(hydratedBookingExtras)
     .filter(([, value]) => value)
     .map(([key]) => key);
   const keys = Array.from(new Set([...baseKeys, ...selectedLegacyKeys]));
 
   return keys.reduce<Booking["extras"]>((acc, key) => {
-    acc[key] = Boolean(bookingExtras?.[key]);
+    acc[key] = Boolean(hydratedBookingExtras[key]);
     return acc;
   }, {});
 }

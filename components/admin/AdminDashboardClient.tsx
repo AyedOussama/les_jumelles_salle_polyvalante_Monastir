@@ -207,7 +207,7 @@ export function AdminDashboardClient() {
       sonorisation: "Sonorisation",
       climatisation: "Climatisation",
       traiteur: "Traiteur",
-      autres: "Spécifique"
+      autres: "Demande spécifique"
     };
     return defaultLabels[key] || key;
   };

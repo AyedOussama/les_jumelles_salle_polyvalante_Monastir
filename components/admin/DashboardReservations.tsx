@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { Booking } from "@/lib/context/BookingContext";
+import { normalizeOptionLabel, splitBookingSpecialNeeds } from "@/lib/bookingOptions";
 
 const MONTH_NAMES_FR = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -423,6 +424,10 @@ function ConfirmedBookings({
                 const bookingMonth = booking.month !== undefined ? MONTH_NAMES_FR[booking.month] : "Mai";
                 const bookingYear = booking.year !== undefined ? booking.year : 2026;
                 const waitingList = getWaitingListForBooking(booking);
+                const { optionLabels } = splitBookingSpecialNeeds(booking.specialNeeds);
+                const visibleExtras = Object.entries(booking.extras).filter(
+                  ([key, val]) => val && !(key === "autres" && optionLabels.length > 0),
+                );
 
                 return (
                   <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors group">
@@ -467,19 +472,27 @@ function ConfirmedBookings({
                         <span className="inline-block text-[10px] text-[#C5A880] font-bold bg-[#C5A880]/5 border border-[#C5A880]/15 px-2 py-0.5 rounded">
                           {booking.eventType}
                         </span>
-                        {Object.entries(booking.extras).filter(([, val]) => val).length > 0 ? (
-                          Object.entries(booking.extras).map(([key, val]) => {
-                            if (!val) return null;
-                            return (
+                        {visibleExtras.length > 0 || optionLabels.length > 0 ? (
+                          <>
+                            {visibleExtras.map(([key]) => (
+                                <span
+                                  key={key}
+                                  className="text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1 shadow-sm"
+                                  title={getExtraLabel(key)}
+                                >
+                                  {getExtraIcon(key)}
+                                </span>
+                            ))}
+                            {optionLabels.map((label) => (
                               <span
-                                key={key}
+                                key={`legacy-${label}`}
                                 className="text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1 shadow-sm"
-                                title={getExtraLabel(key)}
+                                title={label}
                               >
-                                {getExtraIcon(key)}
+                                {getExtraIcon("autres")}
                               </span>
-                            );
-                          })
+                            ))}
+                          </>
                         ) : (
                           <span className="text-[10px] text-slate-400 italic">Sans extras</span>
                         )}
@@ -657,7 +670,16 @@ function BookingInfo({
   getExtraLabel: (key: string) => string;
   getExtraIcon: (key: string) => ReactNode;
 }) {
-  const selectedExtras = Object.entries(booking.extras).filter(([, val]) => val);
+  const { clientNotes, optionLabels } = splitBookingSpecialNeeds(booking.specialNeeds);
+  const selectedExtras = Object.entries(booking.extras).filter(
+    ([key, val]) => val && !(key === "autres" && optionLabels.length > 0),
+  );
+  const selectedExtraLabels = new Set(
+    selectedExtras.map(([key]) => normalizeOptionLabel(getExtraLabel(key))),
+  );
+  const legacyOptionLabels = optionLabels.filter(
+    (label) => !selectedExtraLabels.has(normalizeOptionLabel(label)),
+  );
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -679,24 +701,32 @@ function BookingInfo({
       <div className="sm:col-span-2">
         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Options demandées</label>
         <div className="flex flex-wrap gap-2">
-          {selectedExtras.length > 0 ? (
-            selectedExtras.map(([key]) => (
-              <span key={key} className="inline-flex items-center gap-1 text-xs text-slate-700 bg-slate-50 px-2 py-1 rounded-md border border-slate-200 font-medium">
-                {getExtraIcon(key)}
-                {getExtraLabel(key)}
-              </span>
-            ))
+          {selectedExtras.length > 0 || legacyOptionLabels.length > 0 ? (
+            <>
+              {selectedExtras.map(([key]) => (
+                <span key={key} className="inline-flex items-center gap-1 text-xs text-slate-700 bg-slate-50 px-2 py-1 rounded-md border border-slate-200 font-medium">
+                  {getExtraIcon(key)}
+                  {getExtraLabel(key)}
+                </span>
+              ))}
+              {legacyOptionLabels.map((label) => (
+                <span key={`legacy-${label}`} className="inline-flex items-center gap-1 text-xs text-slate-700 bg-slate-50 px-2 py-1 rounded-md border border-slate-200 font-medium">
+                  {getExtraIcon("autres")}
+                  {label}
+                </span>
+              ))}
+            </>
           ) : (
             <span className="text-sm text-slate-400 italic">Aucune option sélectionnée</span>
           )}
         </div>
       </div>
 
-      {booking.specialNeeds && (
+      {clientNotes && (
         <div className="sm:col-span-2">
           <label className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Demande spéciale</label>
           <div className="bg-amber-50/60 p-2 rounded-lg border border-amber-100 text-xs text-amber-800 font-medium leading-relaxed">
-            {booking.specialNeeds}
+            {clientNotes}
           </div>
         </div>
       )}
