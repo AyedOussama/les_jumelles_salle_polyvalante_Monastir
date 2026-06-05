@@ -175,6 +175,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       
       if (result.success) {
         await refreshAvailability();
+        if (isAdminInitialized) {
+          await loadAdminBookings();
+        }
         return result.dossierNum;
       } else {
         throw new Error(result.error || "Impossible d'enregistrer la réservation.");
