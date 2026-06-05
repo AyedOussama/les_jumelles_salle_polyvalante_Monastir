@@ -6,6 +6,7 @@ import {
   Utensils, ChevronRight, Square, CheckSquare, CalendarDays, User, Phone, ClipboardCheck, ChevronLeft
 } from "lucide-react";
 import { useBookings } from "@/lib/context/BookingContext";
+import { useToast } from "@/lib/context/ToastContext";
 import { getSettingsAction } from "@/app/actions/settings";
 import type { SystemSettings } from "@/app/actions/settings";
 import { scrollToSection } from "@/lib/scrollUtils";
@@ -18,12 +19,14 @@ const MONTH_NAMES_FR = [
 
 export default function BookingEngine(): React.ReactElement {
   const { availability, addBooking } = useBookings();
+  const toast = useToast();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
 
   // Completion states
   const [activeStep, setActiveStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [dossierNum, setDossierNum] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dynamic Calendar Navigation state (defaults to the current month)
   const [currentDate, setCurrentDate] = useState(() => {
@@ -197,7 +200,7 @@ export default function BookingEngine(): React.ReactElement {
   const handleDateSelect = (day: number) => {
     setSelectedDate(day);
     setSelectedSlot(null); // Reset slot if changing date
-    if (activeStep < 2) setActiveStep(2);
+    setActiveStep(2); // Reset back to step 2 to select slot
 
     setTimeout(() => {
       scrollToSection("step-2");
@@ -206,7 +209,7 @@ export default function BookingEngine(): React.ReactElement {
 
   const handleSlotSelect = (slot: "matinee" | "soiree") => {
     setSelectedSlot(slot);
-    if (activeStep < 3) setActiveStep(3);
+    setActiveStep(3); // Reset back to step 3
 
     setTimeout(() => {
       scrollToSection("step-3");
@@ -235,12 +238,13 @@ export default function BookingEngine(): React.ReactElement {
   };
 
   const handleConfirmOrder = async () => {
-    if (!selectedDate || !selectedSlot) return;
+    if (!selectedDate || !selectedSlot || isSubmitting) return;
 
     const mappedExtrasForDb = Object.fromEntries(
       Object.entries(extras).map(([key, value]) => [key, Boolean(value)]),
     );
 
+    setIsSubmitting(true);
     try {
       const generatedCode = await addBooking({
         date: selectedDate,
@@ -257,10 +261,13 @@ export default function BookingEngine(): React.ReactElement {
 
       setDossierNum(generatedCode);
       setIsSubmitted(true);
+      toast.success("Votre demande de réservation a été enregistrée avec succès !");
       window.scrollTo({ top: document.getElementById("reservation")?.offsetTop || 0, behavior: "smooth" });
     } catch (error) {
       console.error("Booking error:", error);
-      alert("Une erreur est survenue lors de la soumission de votre réservation. Veuillez réessayer.");
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors de la soumission de votre réservation. Veuillez réessayer.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -944,10 +951,23 @@ export default function BookingEngine(): React.ReactElement {
 
           <button
             onClick={handleConfirmOrder}
-            className="w-full bg-[#C5A880] hover:bg-[#b2936a] text-white font-bold py-5 rounded-2xl transition-all duration-300 shadow-md shadow-[#C5A880]/15 text-base flex justify-center items-center gap-3 hover:-translate-y-0.5 cursor-pointer active:scale-[0.99]"
+            disabled={isSubmitting}
+            className="w-full bg-[#C5A880] hover:bg-[#b2936a] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-5 rounded-2xl transition-all duration-300 shadow-md shadow-[#C5A880]/15 text-base flex justify-center items-center gap-3 hover:-translate-y-0.5 cursor-pointer active:scale-[0.99]"
           >
-            <span>Confirmer et Envoyer la Demande</span>
-            <CheckCircle2 size={20} />
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Traitement en cours...</span>
+              </>
+            ) : (
+              <>
+                <span>Confirmer et Envoyer la Demande</span>
+                <CheckCircle2 size={20} />
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+const vercelDeploymentId = process.env.VERCEL_DEPLOYMENT_ID
+  ? process.env.VERCEL_DEPLOYMENT_ID.replace(/^dpl_/, "dpl-").slice(0, 32)
+  : undefined;
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -19,6 +22,7 @@ const contentSecurityPolicy = [
 ].filter(Boolean).join("; ");
 
 const nextConfig: NextConfig = {
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID || vercelDeploymentId,
   experimental: {
     serverActions: {
       bodySizeLimit: "4mb",

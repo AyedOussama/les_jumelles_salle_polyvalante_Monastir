@@ -10,7 +10,7 @@ import { getSettingsAction } from "./settings";
 
 const LEGACY_EXTRA_KEYS = ["decoration", "sonorisation", "climatisation", "traiteur", "autres"] as const;
 const BOOKING_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const MAX_BOOKINGS_PER_WINDOW = 5;
+const MAX_BOOKINGS_PER_WINDOW = 10;
 
 type BookingExtraKey = (typeof LEGACY_EXTRA_KEYS)[number];
 export type BookingExtras = Record<string, boolean>;

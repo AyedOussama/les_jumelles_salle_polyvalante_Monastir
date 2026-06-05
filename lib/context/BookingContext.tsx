@@ -51,6 +51,45 @@ interface BookingContextType {
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
+const SERVER_ACTION_RELOAD_KEY = "les-jumelles:server-action-reload-at";
+const SERVER_ACTION_RELOAD_COOLDOWN_MS = 30_000;
+
+function getErrorText(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return typeof error === "string" ? error : "";
+}
+
+function isMissingServerActionError(error: unknown) {
+  const message = getErrorText(error);
+  return [
+    "Failed to find Server Action",
+    "UnrecognizedActionError",
+    "was not found on the server",
+    "failed-to-find-server-action",
+  ].some((pattern) => message.includes(pattern));
+}
+
+function reloadForFreshDeployment(error: unknown) {
+  if (!isMissingServerActionError(error) || typeof window === "undefined") {
+    return false;
+  }
+
+  const lastReloadAt = Number(window.sessionStorage.getItem(SERVER_ACTION_RELOAD_KEY) || 0);
+  const shouldReload = Date.now() - lastReloadAt > SERVER_ACTION_RELOAD_COOLDOWN_MS;
+
+  if (shouldReload) {
+    window.sessionStorage.setItem(SERVER_ACTION_RELOAD_KEY, String(Date.now()));
+    window.alert("Le site vient d'être mis à jour. La page va se recharger, puis vous pourrez refaire l'action.");
+    window.location.reload();
+    return true;
+  }
+
+  return false;
+}
+
+function waitForReload() {
+  return new Promise<never>(() => {});
+}
 
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -59,14 +98,28 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [isAdminInitialized, setIsAdminInitialized] = useState(false);
 
   const refreshAvailability = useCallback(async () => {
-    const publicAvailability = await getPublicAvailabilityAction();
-    setAvailability(publicAvailability);
+    try {
+      const publicAvailability = await getPublicAvailabilityAction();
+      setAvailability(publicAvailability);
+    } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
+      throw error;
+    }
   }, []);
 
   const loadAdminBookings = useCallback(async () => {
-    const dbBookings = await getBookingsAction();
-    setBookings(dbBookings);
-    setIsAdminInitialized(true);
+    try {
+      const dbBookings = await getBookingsAction();
+      setBookings(dbBookings);
+      setIsAdminInitialized(true);
+    } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
+      throw error;
+    }
   }, []);
 
   useEffect(() => {
@@ -79,6 +132,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           setAvailability(publicAvailability);
         }
       } catch (error) {
+        if (reloadForFreshDeployment(error)) {
+          await waitForReload();
+        }
         console.error("Failed to load public availability:", error);
       } finally {
         if (isMounted) {
@@ -124,6 +180,16 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         throw new Error(result.error || "Impossible d'enregistrer la réservation.");
       }
     } catch (error) {
+      // Refresh the availability in case the error was due to slot concurrency
+      try {
+        await refreshAvailability();
+      } catch (refreshErr) {
+        console.error("Failed to refresh availability after booking error:", refreshErr);
+      }
+      
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
       console.error("Error adding booking:", error);
       throw error;
     }
@@ -139,6 +205,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         await refreshAvailability();
       }
     } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
       console.error("Error approving booking:", error);
       throw error;
     }
@@ -154,6 +223,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         await refreshAvailability();
       }
     } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
       console.error("Error rejecting booking:", error);
       throw error;
     }
@@ -169,6 +241,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         await refreshAvailability();
       }
     } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
       console.error("Error cancelling booking:", error);
       throw error;
     }
@@ -184,6 +259,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         await refreshAvailability();
       }
     } catch (error) {
+      if (reloadForFreshDeployment(error)) {
+        await waitForReload();
+      }
       console.error("Error updating booking:", error);
       throw error;
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type Dispatch, type SetStateAction } from "react";
+import { useToast } from "@/lib/context/ToastContext";
 import {
   deleteSiteImageAction,
   uploadPackImageAction,
@@ -55,6 +56,7 @@ export function SettingsPanel({
   onSave,
   onSettingsPersisted,
 }: SettingsPanelProps) {
+  const toast = useToast();
   const [uploadingImageSlot, setUploadingImageSlot] = useState<string | null>(null);
   const [deletingImageSlot, setDeletingImageSlot] = useState<string | null>(null);
   const settingsPackCount = settings?.packs?.length || 0;
@@ -124,7 +126,7 @@ export function SettingsPanel({
   const handleDeletePack = (id: string | number) => {
     if (!settings) return;
     if (settings.packs.length <= 1) {
-      alert("Vous devez garder au moins une formule active.");
+      toast.error("Vous devez garder au moins une formule active.");
       return;
     }
     if (confirm("Êtes-vous sûr de vouloir supprimer cette formule ?")) {
@@ -177,11 +179,11 @@ export function SettingsPanel({
         setSettings(result.settings);
         onSettingsPersisted(result.settings);
       } else {
-        alert(result.error || "Impossible d'uploader cette image.");
+        toast.error(result.error || "Impossible d'uploader cette image.");
       }
     } catch (error) {
       console.error(error);
-      alert("Une erreur inattendue est survenue pendant l'upload.");
+      toast.error("Une erreur inattendue est survenue pendant l'upload.");
     } finally {
       setUploadingImageSlot(null);
     }
@@ -200,11 +202,11 @@ export function SettingsPanel({
         setSettings(result.settings);
         onSettingsPersisted(result.settings);
       } else {
-        alert(result.error || "Impossible d'ajouter cette photo.");
+        toast.error(result.error || "Impossible d'ajouter cette photo.");
       }
     } catch (error) {
       console.error(error);
-      alert("Une erreur inattendue est survenue pendant l'upload.");
+      toast.error("Une erreur inattendue est survenue pendant l'upload.");
     } finally {
       setUploadingImageSlot(null);
     }
@@ -222,11 +224,11 @@ export function SettingsPanel({
         setSettings(result.settings);
         onSettingsPersisted(result.settings);
       } else {
-        alert(result.error || "Impossible de supprimer cette photo.");
+        toast.error(result.error || "Impossible de supprimer cette photo.");
       }
     } catch (error) {
       console.error(error);
-      alert("Une erreur inattendue est survenue pendant la suppression.");
+      toast.error("Une erreur inattendue est survenue pendant la suppression.");
     } finally {
       setDeletingImageSlot(null);
     }

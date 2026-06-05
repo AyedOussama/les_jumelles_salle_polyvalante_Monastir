@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Loader2, Sparkles, Speaker, Utensils, Wind } from "lucide-react";
 import { useBookings } from "@/lib/context/BookingContext";
+import { useToast } from "@/lib/context/ToastContext";
 import type { Booking } from "@/lib/context/BookingContext";
 import { checkAdminSession, logoutAdmin } from "@/app/actions/auth";
 import { getSettingsAction, updateSettingsAction } from "@/app/actions/settings";
@@ -17,6 +18,7 @@ import { SettingsPanel } from "@/components/admin/SettingsPanel";
 
 export function AdminDashboardClient() {
   const { bookings, rejectBooking, cancelBooking, updateBooking, loadAdminBookings } = useBookings();
+  const toast = useToast();
   const [isAuth, setIsAuth] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "confirmed">("pending");
   const [activeView, setActiveView] = useState<"dashboard" | "settings">("dashboard");
@@ -50,9 +52,10 @@ export function AdminDashboardClient() {
       await updateBooking(id, data);
       setEditingBooking(null);
       setEditTargetStatus(undefined);
+      toast.success("Modifications enregistrées avec succès !");
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Erreur lors de l'enregistrement des modifications.");
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'enregistrement des modifications.");
     }
   };
 
@@ -63,7 +66,7 @@ export function AdminDashboardClient() {
         pdfRenderer = await import("@react-pdf/renderer");
       } catch (e) {
         console.error("@react-pdf/renderer not installed", e);
-        alert("Pour générer des PDF, veuillez installer la dépendance en exécutant cette commande dans votre terminal :\n\nnpm install @react-pdf/renderer");
+        toast.error("Pour générer des PDF, veuillez installer @react-pdf/renderer sur votre serveur.");
         return;
       }
 
@@ -92,7 +95,7 @@ export function AdminDashboardClient() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("[PDF generation error]:", error);
-      alert("Une erreur est survenue lors de la génération du PDF.");
+      toast.error("Une erreur est survenue lors de la génération du PDF.");
     }
   };
 
@@ -157,15 +160,15 @@ export function AdminDashboardClient() {
         const persistedSettings = res.settings || settings;
         setSettings(persistedSettings);
         setSavedSettingsSignature(JSON.stringify(persistedSettings));
-        alert("Paramètres de la salle sauvegardés avec succès !");
+        toast.success("Paramètres de la salle sauvegardés avec succès !");
         return true;
       } else {
-        alert("Erreur lors de la sauvegarde : " + res.error);
+        toast.error("Erreur lors de la sauvegarde : " + res.error);
         return false;
       }
     } catch (err) {
       console.error(err);
-      alert("Une erreur inattendue est survenue lors de la sauvegarde.");
+      toast.error("Une erreur inattendue est survenue lors de la sauvegarde.");
       return false;
     } finally {
       setSavingSettings(false);

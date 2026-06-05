@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { BookingProvider } from "@/lib/context/BookingContext";
+import { ToastProvider } from "@/lib/context/ToastContext";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 
 // High-end Serif font for majestic titles and headers
@@ -49,10 +50,12 @@ export default function RootLayout({
         className="min-h-full bg-[#FAF8F5] text-slate-800 font-sans antialiased flex flex-col selection:bg-[#C5A880] selection:text-white"
         suppressHydrationWarning
       >
-        <BookingProvider>
-          {children}
-          <ScrollToTop />
-        </BookingProvider>
+        <ToastProvider>
+          <BookingProvider>
+            {children}
+            <ScrollToTop />
+          </BookingProvider>
+        </ToastProvider>
       </body>
     </html>
   );
