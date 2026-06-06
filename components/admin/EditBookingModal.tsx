@@ -15,6 +15,14 @@ const MONTH_NAMES_FR = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
 
+const DEFAULT_EXTRA_PRICES: Record<string, number> = {
+  decoration: 500,
+  sonorisation: 400,
+  climatisation: 250,
+  traiteur: 1000,
+  autres: 150,
+};
+
 function formatReservationCreatedAt(value?: string) {
   if (!value) return "Date de demande indisponible";
 
@@ -68,6 +76,19 @@ export function EditBookingModal({
   const [eventSlot, setEventSlot] = useState<Booking["slot"]>(booking.slot);
 
   const yearOptions = Array.from({ length: 6 }, (_, index) => new Date().getFullYear() + index);
+
+  const getExtraPrice = (key: string) => availableExtras?.[key]?.price ?? DEFAULT_EXTRA_PRICES[key] ?? 0;
+
+  const handleExtraToggle = (key: string, checked: boolean) => {
+    const wasSelected = Boolean(extras[key]);
+    if (wasSelected === checked) return;
+
+    setExtras({
+      ...extras,
+      [key]: checked,
+    });
+    setTotalPrice((current) => Math.max(0, current + (checked ? getExtraPrice(key) : -getExtraPrice(key))));
+  };
 
   const handleSave = async () => {
     if (status === "confirmed" && advancePayment <= 0) {
@@ -253,14 +274,16 @@ export function EditBookingModal({
                     <input
                       type="checkbox"
                       checked={Boolean(val)}
-                      onChange={(e) => setExtras({
-                        ...extras,
-                        [key]: e.target.checked,
-                      })}
+                      onChange={(e) => handleExtraToggle(key, e.target.checked)}
                       className="rounded text-[#C5A880] focus:ring-[#C5A880] border-slate-300 w-4 h-4"
                     />
-                    <span className="text-xs font-semibold text-slate-700 capitalize">
-                      {getExtraLabel(key)}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-xs font-semibold text-slate-700 capitalize">
+                        {getExtraLabel(key)}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-[#C5A880]">
+                        +{getExtraPrice(key).toLocaleString()} TND
+                      </span>
                     </span>
                   </label>
                 ))}

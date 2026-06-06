@@ -13,6 +13,14 @@ const MONTH_NAMES_FR = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
 ];
 
+function formatPdfMoney(value?: number) {
+  const amount = typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+  const [integerPart, decimalPart] = (Number.isInteger(amount) ? String(amount) : amount.toFixed(2)).split(".");
+  const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+  return `${decimalPart ? `${groupedInteger},${decimalPart}` : groupedInteger} TND`;
+}
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,
@@ -390,15 +398,15 @@ export function InvoicePDF({ booking, settings, logoSrc }: InvoicePDFProps) {
         <View style={styles.financialSummaryBox}>
           <View style={styles.financialRow}>
             <Text style={{ color: '#64748B' }}>Prix Total Prestations :</Text>
-            <Text style={styles.boldText}>{(booking.totalPrice || 0).toLocaleString()} TND</Text>
+            <Text style={styles.boldText}>{formatPdfMoney(booking.totalPrice)}</Text>
           </View>
           <View style={styles.financialRow}>
             <Text style={{ color: '#64748B' }}>Montant Acompte Payé :</Text>
-            <Text style={{ ...styles.boldText, color: '#10B981' }}>{(booking.advancePayment || 0).toLocaleString()} TND</Text>
+            <Text style={{ ...styles.boldText, color: '#10B981' }}>{formatPdfMoney(booking.advancePayment)}</Text>
           </View>
           <View style={styles.financialTotalRow}>
             <Text style={styles.boldText}>Solde restant dû :</Text>
-            <Text style={styles.goldBoldText}>{(booking.remainingAmount || 0).toLocaleString()} TND</Text>
+            <Text style={styles.goldBoldText}>{formatPdfMoney(booking.remainingAmount)}</Text>
           </View>
         </View>
 
