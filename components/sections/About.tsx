@@ -1,9 +1,46 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Clock, Layers3, MapPin, Navigation, Phone, UsersRound } from "lucide-react";
+import { getSettingsAction, type AboutSettings } from "@/app/actions/settings";
 import { SITE_CONFIG } from "@/lib/constants";
 
+const DEFAULT_ABOUT: AboutSettings = {
+  description: "Les Jumelles est une salle de fêtes d'exception à Monastir pensée pour accueillir vos moments importants dans un cadre élégant, moderne et chaleureux. Spécialement conçue pour s'adapter à toutes vos envies, notre salle sublime les mariages féériques, les réceptions prestigieuses et les événements sur-mesure.",
+  capacityValue: "Jusqu'à 500 personnes",
+  capacityDetail: "300 personnes au 2ème étage, en option",
+  structureValue: "Édifiée sur 2 étages",
+  structureDetail: "Espaces modulables selon votre événement",
+  hours: "Tous les jours\n10h00 - 18h00",
+  phone: "+216 56 806 935",
+};
+
+const DIRECTIONS_URL = "https://maps.app.goo.gl/gVs4J4mTzUCe6Z1Z7";
+const MAP_EMBED_URL = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3237.0374288896455!2d10.82916647685061!3d35.77445692484546!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13026d16263aa8b3%3A0x7778252d1526e221!2sLes%20jumelles%20salle%20des%20f%C3%AAte%20et%20cin%C3%A9ma!5e0!3m2!1sfr!2stn!4v1779402133681!5m2!1sfr!2stn";
+
 export default function About() {
+  const [about, setAbout] = useState(DEFAULT_ABOUT);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAboutSettings() {
+      try {
+        const settings = await getSettingsAction();
+        if (isMounted) setAbout(settings.about);
+      } catch (error) {
+        console.error("Failed to load About settings:", error);
+      }
+    }
+
+    void loadAboutSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const phoneHref = `tel:${about.phone.replace(/[^\d+]/g, "")}`;
+
   return (
     <section id="infos" className="py-10 md:py-16 bg-[#FCFAF7] relative border-t border-slate-200/40 overflow-hidden">
 
@@ -22,7 +59,7 @@ export default function About() {
               À Propos de Nous
             </h2>
             <p className="text-base md:text-lg text-slate-600 font-light leading-relaxed">
-              Les Jumelles est une salle de fêtes d&apos;exception à Monastir pensée pour accueillir vos moments importants dans un cadre élégant, moderne et chaleureux. Spécialement conçue pour s&apos;adapter à toutes vos envies, notre salle sublime les mariages féériques, les réceptions prestigieuses et les événements sur-mesure.
+              {about.description}
             </p>
           </div>
 
@@ -41,13 +78,10 @@ export default function About() {
                 <div className="min-w-0 space-y-2">
                   <span className="text-[10px] text-[#9D7E4E] font-bold uppercase tracking-[0.18em] block">Capacité</span>
                   <div className="leading-tight">
-                    <span className="block text-[15px] font-bold text-slate-900">Jusqu&apos;à 500 personnes</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">300 personnes au 2ème étage, en option</span>
+                    <span className="block text-[15px] font-bold text-slate-900">{about.capacityValue}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">{about.capacityDetail}</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Grande salle</span>
-                    <span className="rounded-md bg-[#C5A880]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#9D7E4E]">2ème étage</span>
-                  </div>
+
                 </div>
               </div>
 
@@ -59,8 +93,8 @@ export default function About() {
                 <div className="min-w-0 space-y-2">
                   <span className="text-[10px] text-[#9D7E4E] font-bold uppercase tracking-[0.18em] block">Structure</span>
                   <div className="leading-tight">
-                    <span className="block text-[15px] font-bold text-slate-900">Édifiée sur 2 étages</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">Espaces modulables selon votre événement</span>
+                    <span className="block text-[15px] font-bold text-slate-900">{about.structureValue}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-slate-500">{about.structureDetail}</span>
                   </div>
                 </div>
               </div>
@@ -92,7 +126,7 @@ export default function About() {
                 </div>
                 <div>
                   <strong className="block text-slate-900 text-sm font-semibold tracking-wide mb-1">Horaires de visite</strong>
-                  <span className="text-sm font-light leading-normal">Tous les jours<br />10h00 - 18h00</span>
+                  <span className="text-sm font-light leading-normal whitespace-pre-line">{about.hours}</span>
                 </div>
               </div>
 
@@ -103,8 +137,8 @@ export default function About() {
                 </div>
                 <div>
                   <strong className="block text-slate-900 text-sm font-semibold tracking-wide mb-1">Téléphone</strong>
-                  <a href={SITE_CONFIG.phone.href} className="text-sm font-light hover:text-[#C5A880] transition-colors">
-                    {SITE_CONFIG.phone.display}
+                  <a href={phoneHref} className="text-sm font-light hover:text-[#C5A880] transition-colors">
+                    {about.phone}
                   </a>
                 </div>
               </div>
@@ -112,7 +146,7 @@ export default function About() {
               {/* Google Maps External GPS Router anchor button */}
               <div className="pt-4">
                 <a
-                  href="https://maps.app.goo.gl/gVs4J4mTzUCe6Z1Z7"
+                  href={DIRECTIONS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs uppercase tracking-widest px-6 md:px-7.5 py-3.5 md:py-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
@@ -130,7 +164,7 @@ export default function About() {
         <div className="aspect-[4/3] md:aspect-[4/5] lg:aspect-[4/5] w-full rounded-3xl overflow-hidden border border-slate-200/50 shadow-lg relative group">
 
           <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3237.0374288896455!2d10.82916647685061!3d35.77445692484546!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13026d16263aa8b3%3A0x7778252d1526e221!2sLes%20jumelles%20salle%20des%20f%C3%AAte%20et%20cin%C3%A9ma!5e0!3m2!1sfr!2stn!4v1779402133681!5m2!1sfr!2stn"
+            src={MAP_EMBED_URL}
             width="100%"
             height="100%"
             style={{ border: 0 }}

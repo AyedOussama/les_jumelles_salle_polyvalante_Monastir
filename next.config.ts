@@ -7,7 +7,7 @@ const vercelDeploymentId = process.env.VERCEL_DEPLOYMENT_ID
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://images.unsplash.com https://res.cloudinary.com",
   "media-src 'self' blob: https://cdn.coverr.co https://assets.mixkit.co",

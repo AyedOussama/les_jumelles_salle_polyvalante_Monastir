@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock4,
   Filter,
+  Loader2,
   Phone,
   Search,
   User,
@@ -65,6 +66,7 @@ interface DashboardReservationsProps {
   onReject: (id: number) => Promise<void> | void;
   onCancel: (id: number) => Promise<void> | void;
   onDownloadPdf: (booking: Booking) => void;
+  generatingPdfId?: number | null;
 }
 
 export function DashboardReservations({
@@ -83,6 +85,7 @@ export function DashboardReservations({
   onReject,
   onCancel,
   onDownloadPdf,
+  generatingPdfId,
 }: DashboardReservationsProps) {
   const [pendingAction, setPendingAction] = useState<PendingDestructiveAction | null>(null);
 
@@ -176,6 +179,7 @@ export function DashboardReservations({
             onOpenEdit={onOpenEdit}
             onRequestCancel={(booking) => setPendingAction({ type: "cancel", booking })}
             onDownloadPdf={onDownloadPdf}
+            generatingPdfId={generatingPdfId}
           />
         )}
       </div>
@@ -385,6 +389,7 @@ function ConfirmedBookings({
   onOpenEdit,
   onRequestCancel,
   onDownloadPdf,
+  generatingPdfId,
 }: {
   bookings: Booking[];
   getWaitingListForBooking: (booking: Booking) => Booking[];
@@ -393,6 +398,7 @@ function ConfirmedBookings({
   onOpenEdit: (booking: Booking) => void;
   onRequestCancel: (booking: Booking) => void;
   onDownloadPdf: (booking: Booking) => void;
+  generatingPdfId?: number | null;
 }) {
   return (
     <div>
@@ -425,6 +431,7 @@ function ConfirmedBookings({
                 const bookingYear = booking.year !== undefined ? booking.year : 2026;
                 const waitingList = getWaitingListForBooking(booking);
                 const { optionLabels } = splitBookingSpecialNeeds(booking.specialNeeds);
+                const isGeneratingPdf = generatingPdfId === booking.id;
                 const visibleExtras = Object.entries(booking.extras).filter(
                   ([key, val]) => val && !(key === "autres" && optionLabels.length > 0),
                 );
@@ -521,10 +528,12 @@ function ConfirmedBookings({
                     <td className="px-6 py-4 text-right align-middle">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          disabled={isGeneratingPdf}
                           onClick={() => onDownloadPdf(booking)}
-                          className="text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors border border-slate-200 shadow-sm uppercase tracking-wider"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 px-3 py-2 rounded-lg transition-colors border border-slate-200 shadow-sm uppercase tracking-wider"
                         >
-                          Devis PDF
+                          {isGeneratingPdf ? <Loader2 size={12} className="animate-spin" /> : null}
+                          {isGeneratingPdf ? "Génération..." : "Devis PDF"}
                         </button>
                         <button
                           onClick={() => onOpenEdit(booking)}

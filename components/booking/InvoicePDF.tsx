@@ -279,10 +279,11 @@ interface InvoiceBooking {
 interface InvoicePDFProps {
   booking: InvoiceBooking;
   settings?: SystemSettings | null;
+  logoSrc?: string;
 }
 
-export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
-  const logoUrl = typeof window !== 'undefined' ? `${window.location.origin}/logo_complet.png` : '/logo_complet.png';
+export function InvoicePDF({ booking, settings, logoSrc }: InvoicePDFProps) {
+  const logoUrl = logoSrc || (typeof window !== 'undefined' ? `${window.location.origin}/logo_complet.png` : '/logo_complet.png');
   const bookingMonth = booking.month !== undefined ? MONTH_NAMES_FR[booking.month] : "Mai";
   const bookingYear = booking.year !== undefined ? booking.year : 2026;
   const { clientNotes, optionLabels } = splitBookingSpecialNeeds(booking.specialNeeds);
@@ -357,7 +358,7 @@ export function InvoicePDF({ booking, settings }: InvoicePDFProps) {
           <View style={styles.gridCol}>
             <Text style={styles.gridLabel}>Créneau horaire :</Text>
             <Text style={styles.gridValue}>
-              {booking.slot === "matinee" ? "☀️ Matinée (10h-16h)" : "🌙 Soirée (20h-00h)"}
+              {booking.slot === "matinee" ? "Matinée (10h-16h)" : "Soirée (20h-00h)"}
             </Text>
           </View>
           <View style={styles.gridCol}>

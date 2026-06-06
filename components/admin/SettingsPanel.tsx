@@ -6,6 +6,7 @@ import {
   deleteSiteImageAction,
   uploadPackImageAction,
   uploadSiteImageAction,
+  type AboutSettings,
   type SiteImage,
   type SystemSettings,
 } from "@/app/actions/settings";
@@ -21,6 +22,7 @@ import {
   Plus,
   Settings,
   Image as ImageIcon,
+  Info,
   Sparkles,
   Speaker,
   Trash,
@@ -29,7 +31,7 @@ import {
   Wind,
 } from "lucide-react";
 
-type SettingsSection = "packs" | "extras" | "photos";
+type SettingsSection = "packs" | "extras" | "about" | "photos";
 
 interface SettingsPanelProps {
   settings: SystemSettings | null;
@@ -83,6 +85,13 @@ export function SettingsPanel({
       count: settingsPhotoCount,
       countLabel: settingsPhotoCount > 1 ? "photos" : "photo",
       icon: <ImageIcon size={20} />,
+    },
+    {
+      id: "about" as const,
+      label: "Section À Propos",
+      count: 7,
+      countLabel: "champs",
+      icon: <Info size={20} />,
     },
   ];
 
@@ -165,6 +174,17 @@ export function SettingsPanel({
         extras: updatedExtras,
       });
     }
+  };
+
+  const updateAboutField = <K extends keyof AboutSettings>(field: K, value: AboutSettings[K]) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      about: {
+        ...settings.about,
+        [field]: value,
+      },
+    });
   };
 
   const handleImageUpload = async (slot: string, file?: File) => {
@@ -273,7 +293,7 @@ export function SettingsPanel({
 
         <div className="rounded-2xl bg-slate-100/80 border border-slate-200 p-2">
           <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Choisir une section</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
             {settingsSections.map((section) => {
               const isActive = activeSettingsSection === section.id;
               return (
@@ -594,6 +614,46 @@ export function SettingsPanel({
         </div>
       )}
 
+      {activeSettingsSection === "about" && (
+        <div className="space-y-5">
+          <SectionHeader
+            icon={<Info size={18} />}
+            title="Section À Propos"
+            subtitle="Modifiez uniquement les textes utiles et les coordonnées. Les titres, l'adresse et la carte restent fixes."
+            actionLabel="Enregistré en base"
+            onAction={() => undefined}
+            disabledAction
+          />
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <AboutSettingsCard title="Présentation">
+              <AboutTextField
+                label="Texte de présentation"
+                value={settings.about.description}
+                onChange={(value) => updateAboutField("description", value)}
+                multiline
+                rows={7}
+              />
+            </AboutSettingsCard>
+
+            <AboutSettingsCard title="Spécifications de la salle">
+              <AboutTextField label="Valeur capacité" value={settings.about.capacityValue} onChange={(value) => updateAboutField("capacityValue", value)} />
+              <AboutTextField label="Détail capacité" value={settings.about.capacityDetail} onChange={(value) => updateAboutField("capacityDetail", value)} />
+              <AboutTextField label="Valeur structure" value={settings.about.structureValue} onChange={(value) => updateAboutField("structureValue", value)} />
+              <AboutTextField label="Détail structure" value={settings.about.structureDetail} onChange={(value) => updateAboutField("structureDetail", value)} />
+            </AboutSettingsCard>
+
+            <AboutSettingsCard title="Coordonnées & Horaires">
+              <AboutTextField label="Horaires" value={settings.about.hours} onChange={(value) => updateAboutField("hours", value)} multiline rows={3} />
+              <AboutTextField label="Téléphone" value={settings.about.phone} onChange={(value) => updateAboutField("phone", value)} />
+              <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-500">
+                Adresse affichée fixe : <strong>Avenue Trimeche, Monastir 5000, Tunisie</strong>
+              </p>
+            </AboutSettingsCard>
+          </div>
+        </div>
+      )}
+
       {activeSettingsSection === "photos" && (
         <div className="space-y-5">
           <SectionHeader
@@ -663,6 +723,60 @@ export function SettingsPanel({
       <div className="flex justify-end pt-2">
         <SaveButton saving={savingSettings} onSave={onSave} />
       </div>
+    </div>
+  );
+}
+
+function AboutSettingsCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-4 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm md:p-6">
+      <div className="border-b border-slate-100 pb-3">
+        <h4 className="font-serif text-lg font-bold text-slate-900">{title}</h4>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AboutTextField({
+  label,
+  value,
+  onChange,
+  multiline = false,
+  rows = 3,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+  rows?: number;
+}) {
+  const className = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition-all focus:border-[#C5A880] focus:outline-none focus:ring-2 focus:ring-[#C5A880]/20";
+
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      {multiline ? (
+        <textarea
+          value={value}
+          rows={rows}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${className} resize-y`}
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={className}
+        />
+      )}
     </div>
   );
 }

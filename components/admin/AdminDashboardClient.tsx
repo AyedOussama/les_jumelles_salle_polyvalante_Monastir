@@ -22,12 +22,13 @@ export function AdminDashboardClient() {
   const [isAuth, setIsAuth] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "confirmed">("pending");
   const [activeView, setActiveView] = useState<"dashboard" | "settings">("dashboard");
-  const [activeSettingsSection, setActiveSettingsSection] = useState<"packs" | "extras" | "photos">("packs");
+  const [activeSettingsSection, setActiveSettingsSection] = useState<"packs" | "extras" | "about" | "photos">("packs");
   const [activePackId, setActivePackId] = useState<string | null>(null);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [savedSettingsSignature, setSavedSettingsSignature] = useState<string | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [generatingPdfId, setGeneratingPdfId] = useState<number | null>(null);
   const [pendingLeaveAction, setPendingLeaveAction] = useState<null | (() => void | Promise<void>)>(null);
   const router = useRouter();
 
@@ -60,31 +61,25 @@ export function AdminDashboardClient() {
   };
 
   const downloadPdfInvoice = async (booking: Booking) => {
+    setGeneratingPdfId(booking.id);
     try {
-      let pdfRenderer: typeof import("@react-pdf/renderer");
-      try {
-        pdfRenderer = await import("@react-pdf/renderer");
-      } catch (e) {
-        console.error("@react-pdf/renderer not installed", e);
-        toast.error("Pour générer des PDF, veuillez installer @react-pdf/renderer sur votre serveur.");
-        return;
-      }
+      const response = await fetch(`/api/admin/bookings/${booking.id}/devis`, {
+        method: "GET",
+        credentials: "same-origin",
+      });
 
-      // Import dynamique du composant pour éviter les avertissements SSR
-      const { InvoicePDF } = await import("@/components/booking/InvoicePDF");
-
-      let activeSettings = settings;
-      if (!activeSettings) {
+      if (!response.ok) {
+        let errorMessage = "Une erreur est survenue lors de la génération du PDF.";
         try {
-          activeSettings = await getSettingsAction();
-        } catch (e) {
-          console.error("Failed to load settings for PDF:", e);
+          const payload = await response.json() as { error?: string };
+          if (payload.error) errorMessage = payload.error;
+        } catch {
+          // Keep the generic message when the server did not return JSON.
         }
+        throw new Error(errorMessage);
       }
 
-      const pdfInstance = pdfRenderer.pdf(<InvoicePDF booking={booking} settings={activeSettings} />);
-      const blob = await pdfInstance.toBlob();
-
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -95,7 +90,9 @@ export function AdminDashboardClient() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("[PDF generation error]:", error);
-      toast.error("Une erreur est survenue lors de la génération du PDF.");
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors de la génération du PDF.");
+    } finally {
+      setGeneratingPdfId(null);
     }
   };
 
@@ -387,6 +384,7 @@ export function AdminDashboardClient() {
               onReject={rejectBooking}
               onCancel={cancelBooking}
               onDownloadPdf={downloadPdfInvoice}
+              generatingPdfId={generatingPdfId}
             />
           )}
 

@@ -94,6 +94,15 @@
       "price": 500
     }
   },
+  "about": {
+    "description": "Les Jumelles est une salle de fêtes d'exception à Monastir pensée pour accueillir vos moments importants dans un cadre élégant, moderne et chaleureux. Spécialement conçue pour s'adapter à toutes vos envies, notre salle sublime les mariages féériques, les réceptions prestigieuses et les événements sur-mesure.",
+    "capacityValue": "Jusqu'à 500 personnes",
+    "capacityDetail": "300 personnes au 2ème étage, en option",
+    "structureValue": "Édifiée sur 2 étages",
+    "structureDetail": "Espaces modulables selon votre événement",
+    "hours": "Tous les jours\n10h00 - 18h00",
+    "phone": "+216 56 806 935"
+  },
   "siteImages": {
     "hero": {
       "url": "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop",

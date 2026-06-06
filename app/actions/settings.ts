@@ -46,9 +46,20 @@ export interface SettingExtra {
   price: number;
 }
 
+export interface AboutSettings {
+  description: string;
+  capacityValue: string;
+  capacityDetail: string;
+  structureValue: string;
+  structureDetail: string;
+  hours: string;
+  phone: string;
+}
+
 export interface SystemSettings {
   packs: SettingPack[];
   extras: Record<string, SettingExtra>;
+  about: AboutSettings;
   siteImages: {
     hero: SiteImage;
     gallery: SiteImage[];
@@ -119,6 +130,16 @@ const DEFAULT_PACK_IMAGES: Record<number, SiteImage[]> = {
   ],
 };
 
+const DEFAULT_ABOUT_SETTINGS: AboutSettings = {
+  description: "Les Jumelles est une salle de fêtes d'exception à Monastir pensée pour accueillir vos moments importants dans un cadre élégant, moderne et chaleureux. Spécialement conçue pour s'adapter à toutes vos envies, notre salle sublime les mariages féériques, les réceptions prestigieuses et les événements sur-mesure.",
+  capacityValue: "Jusqu'à 500 personnes",
+  capacityDetail: "300 personnes au 2ème étage, en option",
+  structureValue: "Édifiée sur 2 étages",
+  structureDetail: "Espaces modulables selon votre événement",
+  hours: "Tous les jours\n10h00 - 18h00",
+  phone: "+216 56 806 935",
+};
+
 const DEFAULT_SETTINGS: SystemSettings = {
   packs: [
     {
@@ -174,11 +195,32 @@ const DEFAULT_SETTINGS: SystemSettings = {
     traiteur: { label: "Menu de Fêtes & Service Traiteur", price: 1000 },
     autres: { label: "Autres aménagements spécifiques", price: 150 }
   },
+  about: DEFAULT_ABOUT_SETTINGS,
   siteImages: {
     hero: DEFAULT_HERO_IMAGE,
     gallery: DEFAULT_GALLERY_IMAGES,
   }
 };
+
+function normalizeText(value: unknown, fallback: string, maxLength: number) {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().slice(0, maxLength);
+  return normalized || fallback;
+}
+
+function normalizeAboutSettings(about?: Partial<AboutSettings>): AboutSettings {
+  const source = about || {};
+
+  return {
+    description: normalizeText(source.description, DEFAULT_ABOUT_SETTINGS.description, 1200),
+    capacityValue: normalizeText(source.capacityValue, DEFAULT_ABOUT_SETTINGS.capacityValue, 120),
+    capacityDetail: normalizeText(source.capacityDetail, DEFAULT_ABOUT_SETTINGS.capacityDetail, 180),
+    structureValue: normalizeText(source.structureValue, DEFAULT_ABOUT_SETTINGS.structureValue, 120),
+    structureDetail: normalizeText(source.structureDetail, DEFAULT_ABOUT_SETTINGS.structureDetail, 180),
+    hours: normalizeText(source.hours, DEFAULT_ABOUT_SETTINGS.hours, 240),
+    phone: normalizeText(source.phone, DEFAULT_ABOUT_SETTINGS.phone, 40),
+  };
+}
 
 function normalizeSettings(settings: Partial<SystemSettings>): SystemSettings {
   const packs = (settings.packs || DEFAULT_SETTINGS.packs).map((pack) => ({
@@ -191,6 +233,7 @@ function normalizeSettings(settings: Partial<SystemSettings>): SystemSettings {
   return {
     packs,
     extras: settings.extras || DEFAULT_SETTINGS.extras,
+    about: normalizeAboutSettings(settings.about),
     siteImages: {
       hero: settings.siteImages?.hero || DEFAULT_HERO_IMAGE,
       gallery: DEFAULT_GALLERY_IMAGES.map((fallback, index) => ({
@@ -381,7 +424,7 @@ export async function updateSettingsAction(data: SystemSettings) {
     }
 
     // Validation minimale
-    if (!data.packs || !data.extras || !data.siteImages) {
+    if (!data.packs || !data.extras || !data.about || !data.siteImages) {
       throw new Error("Format de paramètres invalide.");
     }
 
