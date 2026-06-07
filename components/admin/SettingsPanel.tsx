@@ -33,6 +33,14 @@ import {
 
 type SettingsSection = "packs" | "extras" | "about" | "photos";
 
+const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+]);
+
 interface SettingsPanelProps {
   settings: SystemSettings | null;
   setSettings: Dispatch<SetStateAction<SystemSettings | null>>;
@@ -187,8 +195,22 @@ export function SettingsPanel({
     });
   };
 
+  const validateImageBeforeUpload = (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      toast.error("Format non accepté. Choisissez une image JPG, PNG, WebP ou AVIF.");
+      return false;
+    }
+
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      toast.error("Cette image dépasse 4 Mo. Compressez-la avant de réessayer.");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleImageUpload = async (slot: string, file?: File) => {
-    if (!file) return;
+    if (!file || !validateImageBeforeUpload(file)) return;
     const formData = new FormData();
     formData.append("file", file);
     setUploadingImageSlot(slot);
@@ -210,7 +232,7 @@ export function SettingsPanel({
   };
 
   const handlePackImageAdd = async (packId: number, file?: File) => {
-    if (!file) return;
+    if (!file || !validateImageBeforeUpload(file)) return;
     const uploadSlot = `pack:${packId}:add`;
     const formData = new FormData();
     formData.append("file", file);

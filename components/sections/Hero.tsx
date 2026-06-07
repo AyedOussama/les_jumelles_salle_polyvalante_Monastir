@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import Image from "next/image";
 import { getSettingsAction } from "@/app/actions/settings";
 import { scrollToSection } from "@/lib/scrollUtils";
 
-const DEFAULT_HERO_IMAGE = "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop";
+const DEFAULT_HERO_IMAGE = "/hero-jumelles.jpg";
 
 export default function Hero() {
   const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
-  const [hasCustomHeroImage, setHasCustomHeroImage] = useState(false);
 
   useEffect(() => {
     async function loadHeroImage() {
       try {
         const settings = await getSettingsAction();
-        setHeroImage(settings.siteImages.hero.url);
-        setHasCustomHeroImage(Boolean(settings.siteImages.hero.publicId));
+        setHeroImage(settings.siteImages.hero.url || DEFAULT_HERO_IMAGE);
       } catch (error) {
         console.error("Failed to load hero image:", error);
       }
@@ -30,37 +29,20 @@ export default function Hero() {
       id="accueil"
       className="relative h-screen w-full max-w-full flex items-center justify-center overflow-hidden bg-[#FAF8F5]"
     >
-      {/* Immersive Video Layer */}
+      {/* Immersive Image Layer */}
       <div className="absolute inset-0 z-0 bg-[#FAF8F5] overflow-hidden">
-        {/* Soft, light gradient overlays that preserve extreme video clarity and fade into the ivory background */}
+        {/* Soft gradient overlays preserve readability and fade into the ivory background. */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#FAF8F5] z-10 pointer-events-none"></div>
 
-        {hasCustomHeroImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={heroImage}
-            alt="Salle de réception Les Jumelles Monastir"
-            className="absolute inset-0 h-full w-full object-cover z-0 opacity-85 scale-100 select-none pointer-events-none transition-opacity duration-1000"
-          />
-        ) : (
-          <video
-            ref={(el) => {
-              if (el) {
-                el.muted = true;
-                el.play().catch(e => console.log("Autoplay blocked by browser policy", e));
-              }
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none -translate-x-1/2 -translate-y-1/2 object-cover z-0 opacity-80 scale-100 select-none pointer-events-none transition-opacity duration-1000"
-            poster={heroImage}
-          >
-            <source src="https://cdn.coverr.co/videos/coverr-wedding-reception-5244/1080p.mp4" type="video/mp4" />
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-wedding-reception-hall-with-tables-and-chairs-44446-large.mp4" type="video/mp4" />
-          </video>
-        )}
+        <Image
+          src={heroImage}
+          alt="Salle de réception Les Jumelles Monastir"
+          fill
+          preload
+          sizes="100vw"
+          quality={85}
+          className="z-0 select-none object-cover opacity-90 pointer-events-none"
+        />
       </div>
 
       {/* Hero Content Panel */}

@@ -10,7 +10,7 @@ const contentSecurityPolicy = [
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://images.unsplash.com https://res.cloudinary.com",
-  "media-src 'self' blob: https://cdn.coverr.co https://assets.mixkit.co",
+  "media-src 'self' blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
   "frame-src https://www.google.com https://maps.google.com",
@@ -23,9 +23,18 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   deploymentId: process.env.NEXT_DEPLOYMENT_ID || vercelDeploymentId,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
+  },
   experimental: {
     serverActions: {
-      bodySizeLimit: "4mb",
+      // Keep room for the multipart envelope around a validated 4 MiB image.
+      bodySizeLimit: "5mb",
     },
   },
   async headers() {

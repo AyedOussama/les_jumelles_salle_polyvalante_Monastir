@@ -18,6 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
   title: "Les Jumelles Monastir | Salle de Fêtes de Prestige",
   description: "Découvrez Les Jumelles à Monastir. Un cadre majestueux, un design somptueux et un service sur-mesure pour vos mariages, outia, fiançailles et événements professionnels. Réservez votre date en ligne.",
   keywords: ["salle de fete monastir", "mariage monastir", "les jumelles monastir", "salle de mariage tunisie", "outia monastir", "reservation salle fete"],
@@ -32,6 +33,14 @@ export const metadata: Metadata = {
     description: "Une architecture majestueuse, un design somptueux et un service d'excellence pour vos mariages et séminaires à Monastir.",
     type: "website",
     locale: "fr_TN",
+    images: [
+      {
+        url: "/hero-jumelles.jpg",
+        width: 2754,
+        height: 1536,
+        alt: "Salle de réception Les Jumelles Monastir",
+      },
+    ],
   }
 };
 

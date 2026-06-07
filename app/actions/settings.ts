@@ -19,6 +19,10 @@ const ALLOWED_IMAGE_TYPES = new Set([
   "image/avif",
 ]);
 const CLOUDINARY_ALLOWED_FORMATS = "jpg,jpeg,png,webp,avif";
+const LEGACY_DEFAULT_HERO_URLS = new Set([
+  "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop",
+  "/hero-jumelles.png",
+]);
 
 let settingsTableReady: Promise<void> | null = null;
 let cachedSettings: { value: SystemSettings; expiresAt: number } | null = null;
@@ -67,7 +71,7 @@ export interface SystemSettings {
 }
 
 const DEFAULT_HERO_IMAGE: SiteImage = {
-  url: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2098&auto=format&fit=crop",
+  url: "/hero-jumelles.jpg",
   alt: "Salle de réception Les Jumelles Monastir",
   title: "Photo principale",
   category: "Hero",
@@ -222,6 +226,14 @@ function normalizeAboutSettings(about?: Partial<AboutSettings>): AboutSettings {
   };
 }
 
+function normalizeHeroImage(hero?: SiteImage): SiteImage {
+  if (!hero || (!hero.publicId && LEGACY_DEFAULT_HERO_URLS.has(hero.url))) {
+    return DEFAULT_HERO_IMAGE;
+  }
+
+  return hero;
+}
+
 function normalizeSettings(settings: Partial<SystemSettings>): SystemSettings {
   const packs = (settings.packs || DEFAULT_SETTINGS.packs).map((pack) => ({
     ...pack,
@@ -235,7 +247,7 @@ function normalizeSettings(settings: Partial<SystemSettings>): SystemSettings {
     extras: settings.extras || DEFAULT_SETTINGS.extras,
     about: normalizeAboutSettings(settings.about),
     siteImages: {
-      hero: settings.siteImages?.hero || DEFAULT_HERO_IMAGE,
+      hero: normalizeHeroImage(settings.siteImages?.hero),
       gallery: DEFAULT_GALLERY_IMAGES.map((fallback, index) => ({
         ...fallback,
         ...(settings.siteImages?.gallery?.[index] || {}),
