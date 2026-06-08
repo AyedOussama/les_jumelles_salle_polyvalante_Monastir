@@ -258,9 +258,15 @@ export function EditBookingModal({
                   <option value="Mariage">Mariage</option>
                   <option value="Fiançailles">Fiançailles</option>
                   <option value="Outia">Outia</option>
-                  <option value="Cocktail">Cocktail</option>
-                  <option value="Réunion / Séminaire">Réunion / Séminaire</option>
-                  <option value="Autre">Autre Événement</option>
+                  <option value="Henna Sghira">Henna Sghira</option>
+                  <option value="Henna Kbira">Henna Kbira</option>
+                  <option value="T'hour">T'hour</option>
+                  <option value="Cocktail / réception">Cocktail / réception</option>
+                  <option value="Fête École / Garderie">Fête École / Garderie</option>
+                  <option value="Spectacle / Gala">Spectacle / Gala</option>
+                  <option value="Réunion / Séminaire / Conférence">Réunion / Séminaire / Conférence</option>
+                  <option value="Événement associatif (forum.. )">Événement associatif (forum.. )</option>
+                  <option value="Autre événement">Autre événement</option>
                 </select>
               </div>
             </div>
