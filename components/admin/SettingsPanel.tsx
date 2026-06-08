@@ -29,6 +29,8 @@ import {
   UploadCloud,
   Utensils,
   Wind,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 type SettingsSection = "packs" | "extras" | "about" | "photos";
@@ -733,6 +735,25 @@ export function SettingsPanel({
                       uploadingImageSlot={uploadingImageSlot}
                       deletingImageSlot={deletingImageSlot}
                       onUpload={handleImageUpload}
+                      onChangeDetails={(newTitle, newCategory) => {
+                        const newGallery = [...settings.siteImages.gallery];
+                        newGallery[index] = { ...newGallery[index], title: newTitle, category: newCategory };
+                        setSettings({ ...settings, siteImages: { ...settings.siteImages, gallery: newGallery } });
+                      }}
+                      onMoveUp={index > 0 ? () => {
+                        const newGallery = [...settings.siteImages.gallery];
+                        const temp = newGallery[index - 1];
+                        newGallery[index - 1] = newGallery[index];
+                        newGallery[index] = temp;
+                        setSettings({ ...settings, siteImages: { ...settings.siteImages, gallery: newGallery } });
+                      } : undefined}
+                      onMoveDown={index < settings.siteImages.gallery.length - 1 ? () => {
+                        const newGallery = [...settings.siteImages.gallery];
+                        const temp = newGallery[index + 1];
+                        newGallery[index + 1] = newGallery[index];
+                        newGallery[index] = temp;
+                        setSettings({ ...settings, siteImages: { ...settings.siteImages, gallery: newGallery } });
+                      } : undefined}
                     />
                   );
                 })}
@@ -859,6 +880,9 @@ function PhotoSlotCard({
   onDelete,
   canDelete = false,
   wide = false,
+  onChangeDetails,
+  onMoveUp,
+  onMoveDown,
 }: {
   image: SiteImage;
   title: string;
@@ -869,6 +893,9 @@ function PhotoSlotCard({
   onDelete?: (slot: string) => void;
   canDelete?: boolean;
   wide?: boolean;
+  onChangeDetails?: (title: string, category: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const isUploading = uploadingImageSlot === slot;
   const isDeleting = deletingImageSlot === slot;
@@ -899,12 +926,57 @@ function PhotoSlotCard({
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-bold text-slate-800">{title}</p>
-          <p className="truncate text-[10px] text-slate-400">{image.publicId || "Image par défaut"}</p>
+        <div className="min-w-0 flex-1">
+          {onChangeDetails ? (
+            <div className="space-y-2 mt-1 mb-2">
+              <div>
+                <input 
+                  type="text" 
+                  value={image.category || ""} 
+                  onChange={(e) => onChangeDetails(image.title || "", e.target.value)}
+                  className="w-full text-[10px] font-bold uppercase tracking-wider text-[#C5A880] p-2 rounded-lg bg-white border border-slate-200 focus:outline-none focus:border-[#C5A880] shadow-sm transition-colors"
+                  placeholder="Catégorie (ex: Décoration)"
+                />
+              </div>
+              <div>
+                <input 
+                  type="text" 
+                  value={image.title || ""} 
+                  onChange={(e) => onChangeDetails(e.target.value, image.category || "")}
+                  className="w-full text-xs font-serif font-bold text-slate-800 p-2 rounded-lg bg-white border border-slate-200 focus:outline-none focus:border-[#C5A880] shadow-sm transition-colors"
+                  placeholder="Titre (ex: Table d'honneur)"
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-bold text-slate-800">{title}</p>
+              <p className="truncate text-[10px] text-slate-400">{image.publicId || "Image par défaut"}</p>
+            </>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors shadow-sm cursor-pointer"
+              title="Déplacer vers la gauche"
+            >
+              <ArrowLeft size={14} />
+            </button>
+          )}
+          {onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors shadow-sm cursor-pointer"
+              title="Déplacer vers la droite"
+            >
+              <ArrowRight size={14} />
+            </button>
+          )}
         {canDelete && onDelete && (
           <button
             type="button"

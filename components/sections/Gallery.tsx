@@ -61,6 +61,7 @@ const INITIAL_ITEMS: GalleryItem[] = [
 export default function Gallery() {
   const [items, setItems] = useState<GalleryItem[]>(INITIAL_ITEMS);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadGalleryImages() {
@@ -81,6 +82,8 @@ export default function Gallery() {
         );
       } catch (error) {
         console.error("Failed to load gallery images:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -132,11 +135,13 @@ export default function Gallery() {
               item={items[0]} 
               index={0}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
             <GalleryCard 
               item={items[1]} 
               index={1}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
           </div>
 
@@ -146,11 +151,13 @@ export default function Gallery() {
               item={items[2]} 
               index={2}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
             <GalleryCard 
               item={items[3]} 
               index={3}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
           </div>
 
@@ -160,11 +167,13 @@ export default function Gallery() {
               item={items[4]} 
               index={4}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
             <GalleryCard 
               item={items[5]} 
               index={5}
               onOpenLightbox={setLightboxIndex} 
+              isLoading={isLoading}
             />
           </div>
 
@@ -243,9 +252,10 @@ interface CardProps {
   item: GalleryItem;
   index: number;
   onOpenLightbox: (idx: number) => void;
+  isLoading: boolean;
 }
 
-function GalleryCard({ item, index, onOpenLightbox }: CardProps) {
+function GalleryCard({ item, index, onOpenLightbox, isLoading }: CardProps) {
   return (
     <div
       className={`bg-white border border-slate-200/50 rounded-3xl w-full flex items-center justify-center overflow-hidden group relative cursor-pointer shadow-[0_10px_35px_rgba(0,0,0,0.02)] transition-all duration-500 hover:shadow-[0_15px_45px_rgba(197,168,128,0.12)] hover:-translate-y-1 ${item.aspectClass}`}
@@ -254,14 +264,18 @@ function GalleryCard({ item, index, onOpenLightbox }: CardProps) {
       <div className="absolute inset-0 border-[2.5px] border-transparent group-hover:border-[#C5A880]/40 rounded-3xl transition-all duration-500 z-20 pointer-events-none"></div>
 
       {/* Image Layer */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={item.url}
-        alt={item.title}
-        onClick={() => onOpenLightbox(index)}
-        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1.5s] ease-out z-0"
-        loading="lazy"
-      />
+      {isLoading ? (
+        <div className="w-full h-full bg-slate-200 animate-pulse z-0" />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={item.url}
+          alt={item.title}
+          onClick={() => onOpenLightbox(index)}
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[1.5s] ease-out z-0"
+          loading="lazy"
+        />
+      )}
 
       {/* Soft Bright Overlay on Hover */}
       <div 
