@@ -7,6 +7,7 @@ import Sponsors from "@/components/sections/Sponsors";
 import BookingEngine from "@/components/booking/BookingEngine";
 import Footer from "@/components/layout/Footer";
 import MobileContactBar from "@/components/layout/MobileContactBar";
+import VirtualTourFloatingButton from "@/components/layout/VirtualTourFloatingButton";
 
 export default function Home() {
   return (
@@ -45,6 +46,7 @@ export default function Home() {
       <Footer />
 
       <MobileContactBar />
+      <VirtualTourFloatingButton />
 
     </div>
   );

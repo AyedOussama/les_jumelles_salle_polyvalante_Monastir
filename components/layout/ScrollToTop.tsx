@@ -33,7 +33,7 @@ export default function ScrollToTop() {
           onClick={scrollToTop}
           type="button"
           aria-label="Retour en haut de page"
-          className="fixed bottom-6 right-6 z-50 bg-white/90 backdrop-blur-md border border-[#C5A880]/30 hover:border-[#C5A880] text-[#C5A880] hover:text-[#b2936a] w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-500 cursor-pointer active:scale-95 group hover:-translate-y-1 animate-in fade-in zoom-in-95 slide-in-from-bottom-5 duration-300"
+          className="scroll-to-top-control fixed bottom-6 right-6 z-50 bg-white/90 backdrop-blur-md border border-[#C5A880]/30 hover:border-[#C5A880] text-[#C5A880] hover:text-[#b2936a] w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-500 cursor-pointer active:scale-95 group hover:-translate-y-1 animate-in fade-in zoom-in-95 slide-in-from-bottom-5 duration-300"
         >
           <ChevronUp 
             size={22} 

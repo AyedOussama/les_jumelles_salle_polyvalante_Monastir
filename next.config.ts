@@ -13,7 +13,7 @@ const contentSecurityPolicy = [
   "media-src 'self' blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
-  "frame-src https://www.google.com https://maps.google.com",
+  "frame-src https://www.google.com https://maps.google.com https://spinview360.com https://*.spinview360.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

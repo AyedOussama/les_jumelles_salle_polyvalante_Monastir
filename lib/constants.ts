@@ -3,6 +3,7 @@
  * Change any value here and it will propagate to the entire site automatically.
  */
 export const SITE_CONFIG = {
+  virtualTourUrl: "https://spinview360.com/les-jumelles/",
   phone: {
     display: "+216 56 806 935",
     href: "tel:+21656806935",

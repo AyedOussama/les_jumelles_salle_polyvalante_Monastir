@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Phone } from "lucide-react";
 import { SITE_CONFIG } from "@/lib/constants";
 
 export default function MobileContactBar() {
   const [isVisible, setIsVisible] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -26,10 +27,32 @@ export default function MobileContactBar() {
     };
   }, []);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const bar = barRef.current;
+
+    if (!isVisible || !bar) return;
+
+    const updateHeight = () => {
+      root.style.setProperty("--mobile-contact-bar-height", `${bar.getBoundingClientRect().height}px`);
+      root.dataset.contactBarVisible = "true";
+    };
+
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(bar);
+
+    return () => {
+      resizeObserver.disconnect();
+      root.style.removeProperty("--mobile-contact-bar-height");
+      delete root.dataset.contactBarVisible;
+    };
+  }, [isVisible]);
+
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] w-full max-w-full overflow-x-clip border-t border-slate-200/70 bg-[#FAF8F5]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+    <div ref={barRef} className="fixed inset-x-0 bottom-0 z-[70] w-full max-w-full overflow-x-clip border-t border-slate-200/70 bg-[#FAF8F5]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl">
       <div
         className="mx-auto mb-2 flex w-full max-w-md min-w-0 flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#C5A880]/30 bg-white px-4 py-2.5 text-center shadow-sm"
       >
