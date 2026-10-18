@@ -14,6 +14,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DashboardReservations } from "@/components/admin/DashboardReservations";
 import type { GroupedPendingBookings } from "@/components/admin/DashboardReservations";
 import { EditBookingModal } from "@/components/admin/EditBookingModal";
+import { ContractModal } from "@/components/admin/ContractModal";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 
 export function AdminDashboardClient() {
@@ -33,6 +34,7 @@ export function AdminDashboardClient() {
   const router = useRouter();
 
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [contractBooking, setContractBooking] = useState<Booking | null>(null);
   const [editTargetStatus, setEditTargetStatus] = useState<Booking["status"] | undefined>();
 
   const openEditModal = (booking: Booking, targetStatus?: Booking["status"]) => {
@@ -384,6 +386,7 @@ export function AdminDashboardClient() {
               onReject={rejectBooking}
               onCancel={cancelBooking}
               onDownloadPdf={downloadPdfInvoice}
+              onOpenContract={setContractBooking}
               generatingPdfId={generatingPdfId}
             />
           )}
@@ -419,6 +422,15 @@ export function AdminDashboardClient() {
           onSave={handleSaveEdit}
           getExtraLabel={getExtraLabel}
           availableExtras={settings?.extras}
+        />
+      )}
+
+      {contractBooking && (
+        <ContractModal
+          key={contractBooking.id}
+          booking={contractBooking}
+          ownerPhone={settings?.about.phone}
+          onClose={() => setContractBooking(null)}
         />
       )}
 

@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Contrats de location (administration)
+
+- Dans **Réservations confirmées**, le bouton **Contrat**, sous **Devis PDF**, ouvre la saisie et l'aperçu A4.
+- Compléter les identités/CIN, adresses, dates, horaires et conditions financières. Les informations connues sont préremplies ; les soirées se terminent par défaut à minuit le lendemain.
+- **Enregistrer**, **Télécharger le PDF** ou **Ouvrir / imprimer le PDF** conservent le contrat. Le PDF arabe reprend les dix clauses du modèle et laisse les deux signatures vides. L'impression se fait depuis le lecteur PDF.
+- Les contrats sont privés : lecture, sauvegarde et génération PDF nécessitent la session administrateur.
+- Aucune migration ni suppression : les données du contrat sont isolées sous la clé `booking-contract:<id>` dans la table JSON existante `app_settings`. Les réservations, les devis et la clé publique `site-settings` ne sont pas modifiés. Un contrat enregistré ne se resynchronise pas automatiquement avec une réservation modifiée ultérieurement.
+- Police arabe Tajawal intégrée localement, sous licence OFL (`public/fonts/OFL.txt`). Le PDF ne dépend pas d'un téléchargement de police ou d'image externe.
+
+Vérifications sans connexion à la base : `npm run test:contracts` (validation, sauvegarde simulée, confidentialité et véritable PDF A4). L'illustration peut être régénérée avec `node scripts/generate-contract-artwork.mjs` après modification de `public/contract/frame.svg`.
+
 ## Getting Started
 
 First, run the development server:

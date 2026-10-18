@@ -23,6 +23,9 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   deploymentId: process.env.NEXT_DEPLOYMENT_ID || vercelDeploymentId,
+  outputFileTracingIncludes: {
+    "/api/admin/bookings/*/contrat": ["./public/fonts/*.ttf", "./public/contract/frame.png"],
+  },
   images: {
     remotePatterns: [
       {

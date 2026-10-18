@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="906" height="1280" viewBox="0 0 906 1280">
+  <defs>
+    <linearGradient id="paper" x2="0.8" y2="1"><stop stop-color="#fffdf4"/><stop offset="1" stop-color="#f4efdd"/></linearGradient>
+    <linearGradient id="gold"><stop stop-color="#9b7529"/><stop offset=".35" stop-color="#f4d77b"/><stop offset=".65" stop-color="#c7a44f"/><stop offset="1" stop-color="#9b7529"/></linearGradient>
+    <linearGradient id="fade"><stop stop-color="#fffdf4" stop-opacity="0"/><stop offset="1" stop-color="#fffdf4"/></linearGradient>
+    <linearGradient id="navy" x2="1" y2="1"><stop stop-color="#103b56"/><stop offset="1" stop-color="#09273d"/></linearGradient>
+    <clipPath id="photo"><path d="M0 0H330V196C205 174 93 203 0 258Z"/></clipPath>
+    <g id="sprig" fill="none" stroke="#b79543" stroke-width="1.4">
+      <path d="M0 0C22-23 28-53 28-92M11-16C0-24-4-38-3-49M19-34C37-39 47-51 50-65M25-52C13-62 12-75 15-87M27-72C42-78 47-91 46-102"/>
+      <path d="M0-3C-10-8-14-18-12-28C-1-24 4-15 0-3ZM12-19C23-17 35-20 40-30C28-33 18-29 12-19ZM20-37C7-40 1-50 3-62C17-58 22-49 20-37ZM26-56C38-53 49-58 54-69C41-71 31-66 26-56ZM27-77C17-82 13-94 17-105C28-99 32-89 27-77Z" fill="url(#gold)" stroke-width=".6"/>
+    </g>
+  </defs>
+  <rect width="906" height="1280" fill="url(#paper)"/>
+  <image xlink:href="/hero-jumelles.jpg" width="350" height="258" preserveAspectRatio="xMidYMid slice" clip-path="url(#photo)"/>
+  <rect x="225" width="160" height="195" fill="url(#fade)"/>
+  <image xlink:href="/logo_complet.png" x="342" y="0" width="200" height="190" preserveAspectRatio="xMidYMid meet"/>
+  <path d="M0 0H143C114 76 64 144 0 182Z" fill="url(#gold)"/>
+  <path d="M0 0H125C94 69 55 123 0 158Z" fill="url(#navy)"/>
+  <path d="M0 143C45 112 79 64 105 0" fill="none" stroke="#e4c76c" stroke-width="1.5"/>
+  <path d="M671 0H906V213C861 253 739 196 603 188C622 113 641 56 671 0Z" fill="url(#gold)"/>
+  <path d="M686 0H906V202C864 238 747 187 619 179C637 110 657 50 686 0Z" fill="url(#navy)"/>
+  <path d="M0 264C186 157 283 183 442 199C635 220 664 146 906 238V262C683 170 635 239 442 218C280 197 165 187 0 285Z" fill="url(#gold)"/>
+  <path d="M0 281C165 185 281 195 442 216C636 238 683 168 906 260" fill="none" stroke="#fff7d6" stroke-width="3"/>
+  <g fill="#ead581" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="29" text-anchor="middle" transform="rotate(-10 786 105)">
+    <text x="786" y="82">Vos plus beaux</text><text x="786" y="114">événements</text><text x="786" y="146">commencent ici</text>
+  </g>
+  <path d="M713 168Q783 192 854 164M772 181l8-5 8 5-8 5Z" fill="none" stroke="#d4b451" stroke-width="1.5"/>
+  <use xlink:href="#sprig" transform="translate(27 83) rotate(-62) scale(.78)"/>
+  <use xlink:href="#sprig" transform="translate(877 80) rotate(65) scale(.7)"/>
+  <use xlink:href="#sprig" transform="translate(53 1175) rotate(-37) scale(1.1)"/>
+  <use xlink:href="#sprig" transform="translate(854 1210) rotate(32) scale(1.12)"/>
+  <path d="M0 1195C200 1290 667 1294 906 1202V1280H0Z" fill="url(#navy)"/>
+  <path d="M0 1195C200 1290 667 1294 906 1202" fill="none" stroke="url(#gold)" stroke-width="9"/>
+  <path d="M0 1215C209 1302 677 1303 906 1221M0 1269H906" fill="none" stroke="#d0ad51" stroke-width="2"/>
+</svg>
